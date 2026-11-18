@@ -2,6 +2,8 @@ import { createRoute } from '@tanstack/react-router'
 import {
   AlertCircle,
   Check,
+  ChevronLeft,
+  ChevronRight,
   ChevronsUpDown,
   Gift,
   Heart,
@@ -14,7 +16,7 @@ import {
   User,
   Users,
 } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
@@ -87,6 +89,111 @@ const GIFT_BOXES = [
   { id: 'GiftBox:gb_hearts', name: 'Hearts & Love Box' },
   { id: 'GiftBox:gb_birthday', name: 'Birthday Confetti' },
 ]
+
+function CategoryScrollPills({
+  categories,
+  selectedCategory,
+  onSelectCategory,
+}: {
+  categories: string[]
+  selectedCategory: string
+  onSelectCategory: (cat: string) => void
+}) {
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const [canScrollLeft, setCanScrollLeft] = useState(false)
+  const [canScrollRight, setCanScrollRight] = useState(false)
+
+  const checkScroll = useCallback(() => {
+    const el = scrollRef.current
+    if (!el) return
+    setCanScrollLeft(el.scrollLeft > 4)
+    setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 4)
+  }, [])
+
+  useEffect(() => {
+    checkScroll()
+    const el = scrollRef.current
+    if (!el) return
+    const resizeObserver = new ResizeObserver(checkScroll)
+    resizeObserver.observe(el)
+    el.addEventListener('scroll', checkScroll, { passive: true })
+    return () => {
+      resizeObserver.disconnect()
+      el.removeEventListener('scroll', checkScroll)
+    }
+  }, [categories, checkScroll])
+
+  const handleScrollBy = (offset: number) => {
+    scrollRef.current?.scrollBy({ left: offset, behavior: 'smooth' })
+  }
+
+  return (
+    <div className="relative flex items-center min-w-0 flex-1 group">
+      {/* Left Scroll Chevron with Fade Gradient */}
+      {canScrollLeft && (
+        <div className="absolute left-0 z-10 flex items-center pr-2 bg-gradient-to-r from-background via-background/90 to-transparent h-full">
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            onClick={() => handleScrollBy(-180)}
+            className="size-7 rounded-full bg-background/90 hover:bg-accent shadow-sm border"
+            aria-label="Scroll left"
+          >
+            <ChevronLeft className="size-3.5" />
+          </Button>
+        </div>
+      )}
+
+      {/* Pill Row */}
+      <div
+        ref={scrollRef}
+        onWheel={(e) => {
+          if (e.deltaY !== 0) {
+            e.currentTarget.scrollLeft += e.deltaY
+          }
+        }}
+        className="flex items-center gap-1.5 overflow-x-auto min-w-0 w-full no-scrollbar py-1 scroll-smooth"
+      >
+        {categories.map((cat) => {
+          const isSelected = selectedCategory === cat
+          return (
+            <Button
+              key={cat}
+              size="sm"
+              variant={isSelected ? 'default' : 'outline'}
+              onClick={() => onSelectCategory(cat)}
+              className={cn(
+                'text-xs shrink-0 h-8 whitespace-nowrap transition-all duration-150',
+                isSelected
+                  ? 'bg-primary text-primary-foreground font-semibold shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/70'
+              )}
+            >
+              {cat}
+            </Button>
+          )
+        })}
+      </div>
+
+      {/* Right Scroll Chevron with Fade Gradient */}
+      {canScrollRight && (
+        <div className="absolute right-0 z-10 flex items-center pl-2 bg-gradient-to-l from-background via-background/90 to-transparent h-full">
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            onClick={() => handleScrollBy(180)}
+            className="size-7 rounded-full bg-background/90 hover:bg-accent shadow-sm border"
+            aria-label="Scroll right"
+          >
+            <ChevronRight className="size-3.5" />
+          </Button>
+        </div>
+      )}
+    </div>
+  )
+}
 
 export function ItemShopRouteComponent() {
   const { t } = useTranslation(['general'])
@@ -374,20 +481,12 @@ export function ItemShopRouteComponent() {
 
       {/* Filter and Search Bar */}
       <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2.5 min-w-0 w-full">
-        {/* Category Tabs */}
-        <div className="flex items-center gap-1.5 overflow-x-auto min-w-0 flex-1 pb-1 scrollbar-none">
-          {categories.slice(0, 8).map((cat) => (
-            <Button
-              key={cat}
-              size="sm"
-              variant={selectedCategory === cat ? 'default' : 'outline'}
-              onClick={() => setSelectedCategory(cat)}
-              className="text-xs shrink-0 h-8 whitespace-nowrap"
-            >
-              {cat}
-            </Button>
-          ))}
-        </div>
+        {/* Category Tabs: Smooth scroll with chevron controls & zero native scrollbar */}
+        <CategoryScrollPills
+          categories={categories}
+          selectedCategory={selectedCategory}
+          onSelectCategory={(cat) => setSelectedCategory(cat)}
+        />
 
         {/* Search */}
         <div className="relative w-full md:w-56 shrink-0 min-w-0">
