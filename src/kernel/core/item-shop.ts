@@ -23,6 +23,14 @@ import {
 } from '../../services/endpoints/mcp'
 
 export class ItemShopCore {
+  private static sessionGifts = new Map<string, number[]>()
+
+  public static recordSessionGift(accountId: string) {
+    const current = ItemShopCore.sessionGifts.get(accountId) || []
+    current.push(Date.now())
+    ItemShopCore.sessionGifts.set(accountId, current)
+  }
+
   static async getCatalog() {
     try {
       const response = await axios.get('https://fortnite-api.com/v2/shop', {
@@ -168,13 +176,33 @@ export class ItemShopCore {
       }
 
       const now = Date.now()
-      const giftHistory = Array.isArray(stats.gift_history) ? stats.gift_history : []
-      const giftsLast24h = giftHistory.filter((g: any) => {
-        const giftDate = new Date(g.date).getTime()
+      let giftsList: any[] = []
+      if (Array.isArray(stats.gift_history)) {
+        giftsList = stats.gift_history
+      } else if (Array.isArray(stats.gift_history?.gifts)) {
+        giftsList = stats.gift_history.gifts
+      } else if (Array.isArray(stats.gift_history?.sent)) {
+        giftsList = stats.gift_history.sent
+      } else if (stats.gift_history && typeof stats.gift_history === 'object') {
+        for (const val of Object.values(stats.gift_history)) {
+          if (Array.isArray(val)) {
+            giftsList = val
+            break
+          }
+        }
+      }
+
+      const profileGiftsLast24h = giftsList.filter((g: any) => {
+        const dateStr = g?.date || g?.time || g?.created || g?.timestamp
+        const giftDate = new Date(dateStr).getTime()
         return !isNaN(giftDate) && now - giftDate < 24 * 3600 * 1000
       }).length
 
-      const giftsRemainingToday = Math.max(0, 5 - giftsLast24h)
+      const localTimestamps = ItemShopCore.sessionGifts.get(account.accountId) || []
+      const localGiftsLast24h = localTimestamps.filter((ts) => now - ts < 24 * 3600 * 1000).length
+
+      const totalGiftsLast24h = Math.max(profileGiftsLast24h, localGiftsLast24h)
+      const giftsRemainingToday = Math.max(0, 5 - totalGiftsLast24h)
       const canSendGifts = stats.allowed_to_send_gifts !== false
 
       // 2. Fetch Friends Summary for 48h check
@@ -301,6 +329,9 @@ export class ItemShopCore {
         personalMessage: '',
         purchasePrice: payload.price,
       })
+
+      // Record session gift so slots decrement immediately even before Epic CDN cache refresh
+      ItemShopCore.recordSessionGift(payload.account.accountId)
 
       MainWindow.instance.webContents.send(
         ElectronAPIEventKeys.ItemShopSendGiftNotification,

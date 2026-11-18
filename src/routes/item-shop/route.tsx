@@ -301,6 +301,17 @@ export function ItemShopRouteComponent() {
           price: res.price,
           isDryRun: res.isDryRun,
         })
+        if (!res.isDryRun) {
+          setGiftingInfo((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  vbucks: Math.max(0, prev.vbucks - res.price),
+                  giftsRemainingToday: Math.max(0, prev.giftsRemainingToday - 1),
+                }
+              : prev
+          )
+        }
         if (currentAccount) fetchGiftingInfo(currentAccount)
       } else {
         const lowerErr = (res.errorMessage || '').toLowerCase()
@@ -339,6 +350,16 @@ export function ItemShopRouteComponent() {
           price: res.price,
           isDryRun: res.isDryRun,
         })
+        if (!res.isDryRun) {
+          setGiftingInfo((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  vbucks: Math.max(0, prev.vbucks - res.price),
+                }
+              : prev
+          )
+        }
         if (currentAccount) fetchGiftingInfo(currentAccount)
       } else {
         const isAlreadyOwned = res.errorMessage?.toLowerCase().includes('already own')
