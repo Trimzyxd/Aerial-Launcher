@@ -104,14 +104,14 @@ const gotTheLock = app.requestSingleInstanceLock()
   }
 
   const createWindow = async () => {
-    // Create the browser window.
+    // Create the browser window with comfortable desktop bounds so content never cramps.
     const mainWindow = new BrowserWindow({
       center: true,
       frame: false,
-      height: 600,
-      width: 800,
-      minHeight: 400,
-      minWidth: 600,
+      height: 680,
+      width: 1024,
+      minHeight: 600,
+      minWidth: 920,
       webPreferences: {
         devTools: !app.isPackaged,
         preload: path.join(__dirname, 'preload.js'),

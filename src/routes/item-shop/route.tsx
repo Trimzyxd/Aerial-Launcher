@@ -481,12 +481,12 @@ export function ItemShopRouteComponent() {
                     )}
                   </div>
 
-                  {/* 2 Buttons: 1st regular Buy Item, 2nd White Gift Item */}
+                  {/* 2 Buttons: 1st Gray Buy Item, 2nd White Gift Item */}
                   <div className="flex flex-col gap-1.5 w-full">
                     <Button
                       size="sm"
-                      variant="default"
-                      className="w-full text-xs font-semibold"
+                      variant="secondary"
+                      className="w-full text-xs font-semibold bg-neutral-800 text-neutral-200 hover:bg-neutral-700 hover:text-white border border-neutral-700/60"
                       onClick={() => openBuyModal(item)}
                     >
                       Buy Item
@@ -855,9 +855,10 @@ export function ItemShopRouteComponent() {
             </Button>
             <Button
               size="sm"
+              variant="secondary"
               onClick={handleBuyItemSubmit}
               disabled={buyingItem || (!buySafeTestMode && !!giftingInfo && giftingInfo.vbucks < (selectedItem?.price || 0))}
-              className="h-8 text-xs flex items-center gap-1.5"
+              className="h-8 text-xs flex items-center gap-1.5 bg-neutral-800 text-neutral-200 hover:bg-neutral-700 hover:text-white border border-neutral-700/60"
             >
               {buyingItem ? (
                 <>
