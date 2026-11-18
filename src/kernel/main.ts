@@ -628,6 +628,13 @@ const gotTheLock = app.requestSingleInstanceLock()
       },
     )
 
+    ipcMain.on(
+      ElectronAPIEventKeys.ItemShopBuyItem,
+      async (_, payload: any) => {
+        await ItemShopCore.buyItem(payload)
+      },
+    )
+
     /**
      * Advanced Mode
      */

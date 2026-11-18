@@ -2,6 +2,8 @@ import type { IpcRendererEvent } from 'electron'
 import type { AccountData } from '../../types/accounts'
 import type {
   AccountGiftingInfo,
+  BuyItemPayload,
+  BuyItemResult,
   SendGiftPayload,
   SendGiftResult,
   ShopItemEntry,
@@ -80,6 +82,30 @@ export function notificationSendGift(
     removeListener: () =>
       rendererInstance.removeListener(
         ElectronAPIEventKeys.ItemShopSendGiftNotification,
+        customCallback
+      ),
+  }
+}
+
+export function buyItem(payload: BuyItemPayload) {
+  ipcRenderer.send(ElectronAPIEventKeys.ItemShopBuyItem, payload)
+}
+
+export function notificationBuyItem(
+  callback: (value: BuyItemResult) => Promise<void>
+) {
+  const customCallback = (_: IpcRendererEvent, value: BuyItemResult) => {
+    callback(value).catch(() => {})
+  }
+  const rendererInstance = ipcRenderer.on(
+    ElectronAPIEventKeys.ItemShopBuyItemNotification,
+    customCallback
+  )
+
+  return {
+    removeListener: () =>
+      rendererInstance.removeListener(
+        ElectronAPIEventKeys.ItemShopBuyItemNotification,
         customCallback
       ),
   }

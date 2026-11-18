@@ -190,6 +190,8 @@ export enum ElectronAPIEventKeys {
   ItemShopGetGiftingInfoNotification = 'item-shop:get:gifting-info:notification',
   ItemShopSendGift = 'item-shop:send:gift',
   ItemShopSendGiftNotification = 'item-shop:send:gift:notification',
+  ItemShopBuyItem = 'item-shop:buy:item',
+  ItemShopBuyItemNotification = 'item-shop:buy:item:notification',
 
   /**
    * Daily Quests Auto Reroll

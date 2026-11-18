@@ -579,3 +579,36 @@ export function giftCatalogEntry({
     }
   )
 }
+
+export function purchaseItemCatalogEntry({
+  accessToken,
+  accountId,
+  offerId,
+  purchasePrice = 0,
+}: {
+  accessToken: string
+  accountId: string
+  offerId: string
+  purchasePrice?: number
+}) {
+  return baseGameService.post(
+    `/profile/${accountId}/client/PurchaseCatalogEntry`,
+    {
+      offerId,
+      purchaseQuantity: 1,
+      currency: 'MtxCurrency',
+      currencySubType: '',
+      expectedTotalPrice: purchasePrice,
+      gameContext: 'FrontEnd.Store',
+    },
+    {
+      headers: {
+        Authorization: `bearer ${accessToken}`,
+      },
+      params: {
+        profileId: 'common_core',
+        rvn: -1,
+      },
+    }
+  )
+}

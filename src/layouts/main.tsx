@@ -35,7 +35,7 @@ export function MainLayout({ children }: PropsWithChildren) {
           <SidebarMenu />
         </div>
       </div>
-      <div className="flex flex-col">
+      <div className="flex flex-col min-w-0">
         <Header />
         <ScrollArea
           className="h-[calc(100vh-var(--header-height))]"

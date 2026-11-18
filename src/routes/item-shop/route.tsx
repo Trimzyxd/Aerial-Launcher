@@ -67,6 +67,8 @@ import { cn } from '../../lib/utils'
 import type { AccountData } from '../../types/accounts'
 import type {
   AccountGiftingInfo,
+  BuyItemPayload,
+  BuyItemResult,
   EligibleFriend,
   SendGiftPayload,
   SendGiftResult,
@@ -111,6 +113,11 @@ export function ItemShopRouteComponent() {
   const [customMessage, setCustomMessage] = useState<string>('Enjoy your gift!')
   const [safeTestMode, setSafeTestMode] = useState<boolean>(true)
   const [sendingGift, setSendingGift] = useState(false)
+
+  // Buy Modal State
+  const [isBuyModalOpen, setIsBuyModalOpen] = useState(false)
+  const [buyingItem, setBuyingItem] = useState(false)
+  const [buySafeTestMode, setBuySafeTestMode] = useState<boolean>(true)
 
   const currentAccount = useMemo(
     () => accounts.find((acc) => acc.accountId === selectedAccountId) || accounts[0],
@@ -183,10 +190,29 @@ export function ItemShopRouteComponent() {
       }
     })
 
+    const subBuyItem = window.electronAPI.notificationBuyItem(async (res: BuyItemResult) => {
+      setBuyingItem(false)
+      if (res.success) {
+        if (res.isDryRun) {
+          toast.success(
+            `Safe Test Passed! (0 V-Bucks used) Ready to purchase ${res.itemName} for ${res.price} VB.`,
+            { duration: 5000 }
+          )
+        } else {
+          toast.success(`Successfully purchased ${res.itemName} on this account!`)
+        }
+        setIsBuyModalOpen(false)
+        if (currentAccount) fetchGiftingInfo(currentAccount)
+      } else {
+        toast.error(`Purchase failed: ${res.errorMessage || 'Please check V-Bucks balance'}`)
+      }
+    })
+
     return () => {
       subCatalog.removeListener()
       subGiftingInfo.removeListener()
       subSendGift.removeListener()
+      subBuyItem.removeListener()
     }
   }, [currentAccount])
 
@@ -230,6 +256,31 @@ export function ItemShopRouteComponent() {
     setSelectedItem(item)
     setSelectedRecipientId(giftingInfo?.eligibleFriends[0]?.accountId || '')
     setIsModalOpen(true)
+  }
+
+  const openBuyModal = (item: ShopItemEntry) => {
+    setSelectedItem(item)
+    setIsBuyModalOpen(true)
+  }
+
+  const handleBuyItemSubmit = () => {
+    if (!currentAccount || !selectedItem) return
+
+    if (!buySafeTestMode && giftingInfo && giftingInfo.vbucks < selectedItem.price) {
+      toast.error('Insufficient V-Bucks balance on this account!')
+      return
+    }
+
+    setBuyingItem(true)
+    const payload: BuyItemPayload = {
+      account: currentAccount,
+      offerId: selectedItem.offerId,
+      itemName: selectedItem.name,
+      price: selectedItem.price,
+      isDryRun: buySafeTestMode,
+    }
+
+    window.electronAPI.buyItem(payload)
   }
 
   const handleSendGiftSubmit = () => {
@@ -363,7 +414,7 @@ export function ItemShopRouteComponent() {
           <span className="text-xs">Try selecting a different category or clearing your search.</span>
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 min-w-0">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-3 min-w-0 w-full">
           {filteredCatalog.map((item) => {
             const hasEnoughVBucks = giftingInfo ? giftingInfo.vbucks >= item.price : true
             const imageSrc = item.images.featured || item.images.icon
@@ -430,15 +481,27 @@ export function ItemShopRouteComponent() {
                     )}
                   </div>
 
-                  <Button
-                    size="sm"
-                    className="w-full text-xs font-semibold flex items-center gap-1.5"
-                    disabled={!item.giftable}
-                    onClick={() => openGiftModal(item)}
-                  >
-                    <Gift className="size-3.5" />
-                    Gift Item
-                  </Button>
+                  {/* 2 Buttons: 1st regular Buy Item, 2nd White Gift Item */}
+                  <div className="flex flex-col gap-1.5 w-full">
+                    <Button
+                      size="sm"
+                      variant="default"
+                      className="w-full text-xs font-semibold"
+                      onClick={() => openBuyModal(item)}
+                    >
+                      Buy Item
+                    </Button>
+
+                    <Button
+                      size="sm"
+                      className="w-full text-xs font-semibold flex items-center justify-center gap-1.5 bg-white text-black hover:bg-white/90 shadow-sm border"
+                      disabled={!item.giftable}
+                      onClick={() => openGiftModal(item)}
+                    >
+                      <Gift className="size-3.5" />
+                      Gift Item
+                    </Button>
+                  </div>
                 </CardFooter>
               </Card>
             )
@@ -688,6 +751,128 @@ export function ItemShopRouteComponent() {
                 Confirm & Send Gift
               </Button>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* BUY ITEM MODAL DIALOG */}
+      <Dialog open={isBuyModalOpen} onOpenChange={setIsBuyModalOpen}>
+        <DialogContent className="sm:max-w-[420px] max-w-[95vw]">
+          <DialogHeader>
+            <DialogTitle className="text-base font-semibold flex items-center gap-2">
+              <span>Purchase Item for Current Account</span>
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Buy this item directly for your active account using V-Bucks.
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedItem && (
+            <div className="flex flex-col gap-3 py-1">
+              {/* Cosmetic Preview */}
+              <div className="flex items-center gap-3 p-2.5 rounded-lg border bg-muted/40">
+                <div className="size-14 rounded bg-muted flex items-center justify-center overflow-hidden shrink-0 border">
+                  {selectedItem.images.icon ? (
+                    <img
+                      src={selectedItem.images.icon}
+                      alt={selectedItem.name}
+                      className="size-full object-contain"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none'
+                      }}
+                    />
+                  ) : (
+                    <Sparkles className="size-5 text-muted-foreground" />
+                  )}
+                </div>
+
+                <div className="flex flex-col min-w-0 flex-1">
+                  <span className="font-semibold text-sm truncate">{selectedItem.name}</span>
+                  <span className="text-xs text-muted-foreground">{selectedItem.type} • {selectedItem.rarity}</span>
+                  <div className="flex items-center gap-1 font-bold text-xs text-blue-500 mt-1">
+                    <span>{selectedItem.price.toLocaleString()}</span>
+                    <span>V-Bucks</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Safe Dry-Run Toggle Banner */}
+              <div
+                className={cn(
+                  'flex items-center justify-between p-2.5 rounded-lg border text-xs cursor-pointer select-none transition-colors',
+                  buySafeTestMode
+                    ? 'bg-blue-500/10 border-blue-500/30 text-blue-600 dark:text-blue-400'
+                    : 'bg-muted border-border text-muted-foreground'
+                )}
+                onClick={() => setBuySafeTestMode(!buySafeTestMode)}
+              >
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="size-4 shrink-0" />
+                  <div className="flex flex-col">
+                    <span className="font-semibold">Safe Test Mode (0 V-Bucks)</span>
+                    <span className="text-[10px] opacity-80">
+                      {buySafeTestMode ? 'Validates purchase eligibility with zero spend.' : 'Disabled: Real V-Bucks will be deducted.'}
+                    </span>
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  variant={buySafeTestMode ? 'default' : 'outline'}
+                  className="h-6 text-[11px] px-2"
+                  type="button"
+                >
+                  {buySafeTestMode ? 'Test: ON' : 'Test: OFF'}
+                </Button>
+              </div>
+
+              {/* Account Confirmation */}
+              <div className="flex items-center justify-between text-xs px-1">
+                <span className="text-muted-foreground">Purchasing Account:</span>
+                <span className="font-semibold">{currentAccount?.customDisplayName || currentAccount?.displayName}</span>
+              </div>
+
+              <div className="flex items-center justify-between text-xs px-1">
+                <span className="text-muted-foreground">Current Balance:</span>
+                <span className="font-semibold text-blue-500">
+                  {giftingInfo ? `${giftingInfo.vbucks.toLocaleString()} V-Bucks` : '...'}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between text-xs px-1">
+                <span className="text-muted-foreground">Balance After Purchase:</span>
+                <span className="font-semibold text-blue-500">
+                  {buySafeTestMode
+                    ? `${giftingInfo?.vbucks.toLocaleString() || '...'} V-Bucks (0 spent)`
+                    : `${giftingInfo ? (giftingInfo.vbucks - selectedItem.price).toLocaleString() : '...'} V-Bucks`}
+                </span>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="mt-2">
+            <Button variant="outline" size="sm" onClick={() => setIsBuyModalOpen(false)} disabled={buyingItem} className="h-8 text-xs">
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleBuyItemSubmit}
+              disabled={buyingItem || (!buySafeTestMode && !!giftingInfo && giftingInfo.vbucks < (selectedItem?.price || 0))}
+              className="h-8 text-xs flex items-center gap-1.5"
+            >
+              {buyingItem ? (
+                <>
+                  <Loader2 className="size-3.5 animate-spin" />
+                  <span>Processing...</span>
+                </>
+              ) : buySafeTestMode ? (
+                <>
+                  <ShieldCheck className="size-3.5" />
+                  <span>Test Purchase (0 VB)</span>
+                </>
+              ) : (
+                <span>Confirm Purchase ({selectedItem?.price.toLocaleString()} VB)</span>
+              )}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

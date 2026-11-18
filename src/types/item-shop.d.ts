@@ -59,3 +59,20 @@ export type SendGiftResult = {
   isDryRun?: boolean
   errorMessage?: string | null
 }
+
+export type BuyItemPayload = {
+  account: AccountData
+  offerId: string
+  itemName: string
+  price: number
+  isDryRun?: boolean
+}
+
+export type BuyItemResult = {
+  success: boolean
+  accountId: string
+  itemName: string
+  price: number
+  isDryRun?: boolean
+  errorMessage?: string | null
+}

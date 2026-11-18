@@ -2,6 +2,8 @@ import axios from 'axios'
 import type { AccountData } from '../../types/accounts'
 import type {
   AccountGiftingInfo,
+  BuyItemPayload,
+  BuyItemResult,
   EligibleFriend,
   SendGiftPayload,
   SendGiftResult,
@@ -17,6 +19,7 @@ import { findUsersByAccountIds } from '../../services/endpoints/lookup'
 import {
   getQueryProfileMainProfile,
   giftCatalogEntry,
+  purchaseItemCatalogEntry,
 } from '../../services/endpoints/mcp'
 
 export class ItemShopCore {
@@ -325,6 +328,80 @@ export class ItemShopCore {
           isDryRun: payload.isDryRun,
           errorMessage: error?.response?.data?.errorMessage || error?.message || 'Gifting request failed',
         } as SendGiftResult
+      )
+    }
+  }
+
+  static async buyItem(payload: BuyItemPayload) {
+    try {
+      const accessToken = await Authentication.verifyAccessToken(payload.account)
+      if (!accessToken) {
+        MainWindow.instance.webContents.send(
+          ElectronAPIEventKeys.ItemShopBuyItemNotification,
+          {
+            success: false,
+            accountId: payload.account.accountId,
+            itemName: payload.itemName,
+            price: payload.price,
+            isDryRun: payload.isDryRun,
+            errorMessage: 'Authentication failed for account',
+          } as BuyItemResult
+        )
+        return
+      }
+
+      if (payload.isDryRun) {
+        await getQueryProfileMainProfile({
+          accessToken,
+          accountId: payload.account.accountId,
+        })
+
+        MainWindow.instance.webContents.send(
+          ElectronAPIEventKeys.ItemShopBuyItemNotification,
+          {
+            success: true,
+            accountId: payload.account.accountId,
+            itemName: payload.itemName,
+            price: payload.price,
+            isDryRun: true,
+            errorMessage: null,
+          } as BuyItemResult
+        )
+        return
+      }
+
+      await purchaseItemCatalogEntry({
+        accessToken,
+        accountId: payload.account.accountId,
+        offerId: payload.offerId,
+        purchasePrice: payload.price,
+      })
+
+      MainWindow.instance.webContents.send(
+        ElectronAPIEventKeys.ItemShopBuyItemNotification,
+        {
+          success: true,
+          accountId: payload.account.accountId,
+          itemName: payload.itemName,
+          price: payload.price,
+          isDryRun: false,
+          errorMessage: null,
+        } as BuyItemResult
+      )
+    } catch (error: any) {
+      MainWindow.instance.webContents.send(
+        ElectronAPIEventKeys.ItemShopBuyItemNotification,
+        {
+          success: false,
+          accountId: payload.account.accountId,
+          itemName: payload.itemName,
+          price: payload.price,
+          isDryRun: payload.isDryRun,
+          errorMessage:
+            error?.response?.data?.errorMessage ||
+            error?.message ||
+            'Item purchase failed',
+        } as BuyItemResult
       )
     }
   }
