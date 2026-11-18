@@ -1,4 +1,8 @@
-import type { DailyQuestsAccountData } from '../../../types/daily-quests'
+import type {
+  AutoRerollConfig,
+  AutoRerollSummaryResult,
+  DailyQuestsAccountData,
+} from '../../../types/daily-quests'
 
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -17,6 +21,7 @@ export function useDailyQuestsData() {
   const { t } = useTranslation(['stw-operations', 'general'])
 
   const [isLoading, setIsLoading] = useState(false)
+  const [isAutoRerolling, setIsAutoRerolling] = useState(false)
   const [rerollingQuest, setRerollingQuest] = useState<
     | {
         accountId: string
@@ -64,6 +69,28 @@ export function useDailyQuestsData() {
   }, [])
 
   useEffect(() => {
+    const listener = window.electronAPI.notificationAutoRerollDailyQuests(
+      async (summary: AutoRerollSummaryResult) => {
+        setIsAutoRerolling(false)
+        if (summary.totalRerolled > 0) {
+          toast(`Auto-rerolled ${summary.totalRerolled} blacklisted quests across your accounts!`)
+          // Reload the list
+          const selectedAccounts = getAccounts()
+          if (selectedAccounts.length > 0) {
+            window.electronAPI.requestDailyQuests(selectedAccounts)
+          }
+        } else {
+          toast('No blacklisted daily quests found on selected accounts.')
+        }
+      }
+    )
+
+    return () => {
+      listener.removeListener()
+    }
+  }, [getAccounts])
+
+  useEffect(() => {
     const listener = window.electronAPI.notificationDailyQuestReroll(
       async (response) => {
         setRerollingQuest(null)
@@ -93,6 +120,28 @@ export function useDailyQuestsData() {
       listener.removeListener()
     }
   }, [])
+
+  useEffect(() => {
+    const listener = window.electronAPI.notificationAutoRerollDailyQuests(
+      async (summary: AutoRerollSummaryResult) => {
+        setIsAutoRerolling(false)
+        if (summary.totalRerolled > 0) {
+          toast(`Auto-rerolled ${summary.totalRerolled} blacklisted quests across your accounts!`)
+          // Reload the list
+          const selectedAccounts = getAccounts()
+          if (selectedAccounts.length > 0) {
+            window.electronAPI.requestDailyQuests(selectedAccounts)
+          }
+        } else {
+          toast('No blacklisted daily quests found on selected accounts.')
+        }
+      }
+    )
+
+    return () => {
+      listener.removeListener()
+    }
+  }, [getAccounts])
 
   const handleFetch = () => {
     if (fetchButtonIsDisabled) {
@@ -137,12 +186,28 @@ export function useDailyQuestsData() {
     window.electronAPI.rerollDailyQuest(account, questId)
   }
 
+  const handleAutoReroll = (customConfig?: AutoRerollConfig) => {
+    const selectedAccounts = getAccounts()
+    if (selectedAccounts.length <= 0) {
+      toast(
+        t('form.accounts.no-linked', {
+          ns: 'general',
+        })
+      )
+      return
+    }
+
+    setIsAutoRerolling(true)
+    window.electronAPI.runAutoRerollDailyQuests(selectedAccounts, customConfig)
+  }
+
   return {
     accounts,
     accountList,
     dailyQuests,
     fetchButtonIsDisabled,
     isLoading,
+    isAutoRerolling,
     parsedSelectedAccounts,
     parsedSelectedTags,
     rerollIsDisabled,
@@ -153,5 +218,6 @@ export function useDailyQuestsData() {
     dailyQuestsUpdateTags,
     handleFetch,
     handleReroll,
+    handleAutoReroll,
   }
 }

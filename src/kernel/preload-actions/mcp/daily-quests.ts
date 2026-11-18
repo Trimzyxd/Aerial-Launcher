@@ -1,6 +1,8 @@
 import type { IpcRendererEvent } from 'electron'
 import type { AccountData } from '../../../types/accounts'
 import type {
+  AutoRerollConfig,
+  AutoRerollSummaryResult,
   DailyQuestRerollResponse,
   DailyQuestsAccountData,
 } from '../../../types/daily-quests'
@@ -62,6 +64,40 @@ export function notificationDailyQuestReroll(
     removeListener: () =>
       rendererInstance.removeListener(
         ElectronAPIEventKeys.DailyQuestRerollNotification,
+        customCallback
+      ),
+  }
+}
+
+export function runAutoRerollDailyQuests(
+  accounts: Array<AccountData>,
+  customConfig?: AutoRerollConfig
+) {
+  ipcRenderer.send(
+    ElectronAPIEventKeys.DailyQuestsAutoRerollRun,
+    accounts,
+    customConfig
+  )
+}
+
+export function notificationAutoRerollDailyQuests(
+  callback: (value: AutoRerollSummaryResult) => Promise<void>
+) {
+  const customCallback = (
+    _: IpcRendererEvent,
+    value: AutoRerollSummaryResult
+  ) => {
+    callback(value).catch(() => {})
+  }
+  const rendererInstance = ipcRenderer.on(
+    ElectronAPIEventKeys.DailyQuestsAutoRerollNotification,
+    customCallback
+  )
+
+  return {
+    removeListener: () =>
+      rendererInstance.removeListener(
+        ElectronAPIEventKeys.DailyQuestsAutoRerollNotification,
         customCallback
       ),
   }

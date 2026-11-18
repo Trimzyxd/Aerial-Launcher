@@ -164,6 +164,40 @@ export enum ElectronAPIEventKeys {
   PartyRemoveFriendActionNotification = 'party:friend:remove:notification',
 
   /**
+   * Friends Management
+   */
+  FriendsGetSummary = 'friends:get:summary',
+  FriendsGetSummaryNotification = 'friends:get:summary:notification',
+  FriendsAcceptRequest = 'friends:request:accept',
+  FriendsAcceptRequestNotification = 'friends:request:accept:notification',
+  FriendsRejectRequest = 'friends:request:reject',
+  FriendsRejectRequestNotification = 'friends:request:reject:notification',
+  FriendsSendRequest = 'friends:request:send',
+  FriendsSendRequestNotification = 'friends:request:send:notification',
+  FriendsRemove = 'friends:remove',
+  FriendsRemoveNotification = 'friends:remove:notification',
+  FriendsBulkAccept = 'friends:bulk:accept',
+  FriendsBulkAcceptNotification = 'friends:bulk:accept:notification',
+  FriendsBulkSend = 'friends:bulk:send',
+  FriendsBulkSendNotification = 'friends:bulk:send:notification',
+
+  /**
+   * Item Shop & Gifting
+   */
+  ItemShopGetCatalog = 'item-shop:get:catalog',
+  ItemShopGetCatalogNotification = 'item-shop:get:catalog:notification',
+  ItemShopGetGiftingInfo = 'item-shop:get:gifting-info',
+  ItemShopGetGiftingInfoNotification = 'item-shop:get:gifting-info:notification',
+  ItemShopSendGift = 'item-shop:send:gift',
+  ItemShopSendGiftNotification = 'item-shop:send:gift:notification',
+
+  /**
+   * Daily Quests Auto Reroll
+   */
+  DailyQuestsAutoRerollRun = 'daily-quests:auto-reroll:run',
+  DailyQuestsAutoRerollNotification = 'daily-quests:auto-reroll:notification',
+
+  /**
    * Advanced Mode
    */
 

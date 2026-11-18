@@ -34,3 +34,27 @@ export type DailyQuestRerollResponse =
       errorMessage: null
       data: DailyQuestsAccountData
     }
+
+export type AutoRerollConfig = {
+  enabled: boolean
+  rerollLowVBucks: boolean
+  blacklistedQuestIds: Array<string>
+  customKeywords: Array<string>
+}
+
+export type AutoRerollItemResult = {
+  accountId: string
+  displayName: string
+  oldQuestTemplateId: string
+  oldQuestName: string
+  newQuestTemplateId?: string
+  newQuestName?: string
+  success: boolean
+  errorMessage?: string | null
+}
+
+export type AutoRerollSummaryResult = {
+  success: boolean
+  totalRerolled: number
+  results: Array<AutoRerollItemResult>
+}

@@ -537,3 +537,45 @@ export function setStorageTransfer({
     }
   )
 }
+
+export function giftCatalogEntry({
+  accessToken,
+  accountId,
+  offerId,
+  receiverAccountIds,
+  giftWrapTemplateId = 'GiftBox:gb_default',
+  personalMessage = 'Enjoy your gift!',
+  purchasePrice = 0,
+}: {
+  accessToken: string
+  accountId: string
+  offerId: string
+  receiverAccountIds: Array<string>
+  giftWrapTemplateId?: string
+  personalMessage?: string
+  purchasePrice?: number
+}) {
+  return baseGameService.post(
+    `/profile/${accountId}/client/GiftCatalogEntry`,
+    {
+      offerId,
+      receiverAccountIds,
+      giftWrapTemplateId,
+      personalMessage,
+      purchasePrice,
+      currency: 'MtxCurrency',
+      currencySubType: '',
+      expectedTotalPrice: purchasePrice,
+      gameContext: 'FrontEnd.Store',
+    },
+    {
+      headers: {
+        Authorization: `bearer ${accessToken}`,
+      },
+      params: {
+        profileId: 'common_core',
+        rvn: -1,
+      },
+    }
+  )
+}

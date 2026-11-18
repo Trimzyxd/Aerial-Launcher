@@ -1,4 +1,7 @@
-import type { FetchFriendResponse } from '../../types/services/friends'
+import type {
+  FetchFriendResponse,
+  FriendsSummaryResponse,
+} from '../../types/services/friends'
 
 import { friendsService } from '../config/friends'
 
@@ -13,6 +16,23 @@ export function getFriend({
 }) {
   return friendsService.get<FetchFriendResponse>(
     `/${accountId}/friends/${friendId}`,
+    {
+      headers: {
+        Authorization: `bearer ${accessToken}`,
+      },
+    },
+  )
+}
+
+export function getFriendsSummary({
+  accessToken,
+  accountId,
+}: {
+  accessToken: string
+  accountId: string
+}) {
+  return friendsService.get<FriendsSummaryResponse>(
+    `/${accountId}/summary?includeConversations=false`,
     {
       headers: {
         Authorization: `bearer ${accessToken}`,

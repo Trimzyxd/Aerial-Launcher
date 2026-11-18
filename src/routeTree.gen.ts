@@ -12,6 +12,8 @@
 
 import { Route as rootRoute } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings/route'
+import { Route as ItemShopRouteImport } from './routes/item-shop/route'
+import { Route as FriendsRouteImport } from './routes/friends/route'
 import { Route as IndexImport } from './routes/index'
 import { Route as StwOperationsXpboostsRouteImport } from './routes/stw-operations/xpboosts/route'
 import { Route as StwOperationsUrnsRouteImport } from './routes/stw-operations/urns/route'
@@ -38,6 +40,16 @@ import { Route as AccountsAddTypeImport } from './routes/accounts/add/$type'
 
 const SettingsRouteRoute = SettingsRouteImport.update({
   path: '/settings',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const ItemShopRouteRoute = ItemShopRouteImport.update({
+  path: '/item-shop',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const FriendsRouteRoute = FriendsRouteImport.update({
+  path: '/friends',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -171,6 +183,14 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexImport
       parentRoute: typeof rootRoute
     }
+    '/friends': {
+      preLoaderRoute: typeof FriendsRouteImport
+      parentRoute: typeof rootRoute
+    }
+    '/item-shop': {
+      preLoaderRoute: typeof ItemShopRouteImport
+      parentRoute: typeof rootRoute
+    }
     '/settings': {
       preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRoute
@@ -262,6 +282,8 @@ declare module '@tanstack/react-router' {
 
 export const routeTree = rootRoute.addChildren([
   IndexRoute,
+  FriendsRouteRoute,
+  ItemShopRouteRoute,
   SettingsRouteRoute,
   AccountManagementDevicesAuthRouteRoute,
   AccountManagementEpicGamesSettingsRouteRoute,

@@ -12,6 +12,7 @@ import type {
 import type { TagRecord } from '../../types/tags'
 import type { TaxiServiceAccountFileDataList } from '../../types/taxi-service'
 import type { AutoPinUrnDataList } from '../../types/urns'
+import type { AutoRerollConfig } from '../../types/daily-quests'
 
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
@@ -151,6 +152,22 @@ export class DataDirectory {
   )
   private static miniBossesDefaultData: AutoPinUrnDataList = {}
 
+  static autoRerollFilePath = path.join(
+    DataDirectory.dataDirectoryPath,
+    'auto-reroll-quests.json',
+  )
+  private static autoRerollDefaultData: AutoRerollConfig = {
+    enabled: true,
+    rerollLowVBucks: true,
+    blacklistedQuestIds: [
+      'daily_explorezones',
+      'daily_partyof50',
+      'daily_mission_specialist_anyhero_2',
+      'daily_huskextermination_anyhero',
+    ],
+    customKeywords: ['explore', 'play with others'],
+  }
+
   /**
    * Get default values
    */
@@ -201,6 +218,7 @@ export class DataDirectory {
     await DataDirectory.getOrCreateUrnsJsonFile()
     await DataDirectory.getOrCreateAutoLlamasJsonFile()
     await DataDirectory.getOrCreateMiniBossesJsonFile()
+    await DataDirectory.getOrCreateAutoRerollJsonFile()
   }
 
   /**
@@ -937,6 +955,41 @@ export class DataDirectory {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       //
+    }
+  }
+
+  static async getAutoRerollSettings(): Promise<AutoRerollConfig> {
+    try {
+      const exists = await DataDirectory.getOrCreateAutoRerollJsonFile()
+      const parsed = JSON.parse(exists)
+      return {
+        ...DataDirectory.autoRerollDefaultData,
+        ...parsed,
+      }
+    } catch {
+      return DataDirectory.autoRerollDefaultData
+    }
+  }
+
+  static async updateAutoRerollSettings(settings: AutoRerollConfig): Promise<void> {
+    try {
+      await writeFile(
+        DataDirectory.autoRerollFilePath,
+        JSON.stringify(settings, null, 2),
+        { encoding: 'utf8' },
+      )
+    } catch {
+      //
+    }
+  }
+
+  private static async getOrCreateAutoRerollJsonFile(): Promise<string> {
+    try {
+      return await readFile(DataDirectory.autoRerollFilePath, { encoding: 'utf8' })
+    } catch {
+      const data = JSON.stringify(DataDirectory.autoRerollDefaultData, null, 2)
+      await writeFile(DataDirectory.autoRerollFilePath, data, { encoding: 'utf8' })
+      return data
     }
   }
 }

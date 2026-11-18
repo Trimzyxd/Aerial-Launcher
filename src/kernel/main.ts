@@ -47,6 +47,8 @@ import {
 } from './core/mcp'
 import { MatchmakingTrack } from './core/matchmaking-track'
 import { Manifest } from './core/manifest'
+import { FriendsCore } from './core/friends'
+import { ItemShopCore } from './core/item-shop'
 import { Party } from './core/party'
 import { RedeemCodes } from './core/redeem-codes'
 import { Unlock } from './core/unlock'
@@ -402,6 +404,13 @@ const gotTheLock = app.requestSingleInstanceLock()
     )
 
     ipcMain.on(
+      ElectronAPIEventKeys.DailyQuestsAutoRerollRun,
+      async (_, accounts: Array<AccountData>, customConfig?: any) => {
+        await MCPDailyQuests.autoRerollAll(accounts, customConfig)
+      },
+    )
+
+    ipcMain.on(
       ElectronAPIEventKeys.SetHombaseName,
       async (_, accounts: Array<AccountData>, homebaseName: string) => {
         await MCPHomebaseName.update(accounts, homebaseName)
@@ -523,6 +532,81 @@ const gotTheLock = app.requestSingleInstanceLock()
         },
       ) => {
         await Party.removeFriend(data)
+      },
+    )
+
+    /**
+     * Friends Management
+     */
+
+    ipcMain.on(
+      ElectronAPIEventKeys.FriendsGetSummary,
+      async (_, account: AccountData) => {
+        await FriendsCore.getSummary(account)
+      },
+    )
+
+    ipcMain.on(
+      ElectronAPIEventKeys.FriendsAcceptRequest,
+      async (_, account: AccountData, friendId: string) => {
+        await FriendsCore.acceptRequest(account, friendId)
+      },
+    )
+
+    ipcMain.on(
+      ElectronAPIEventKeys.FriendsRejectRequest,
+      async (_, account: AccountData, friendId: string) => {
+        await FriendsCore.rejectRequest(account, friendId)
+      },
+    )
+
+    ipcMain.on(
+      ElectronAPIEventKeys.FriendsSendRequest,
+      async (_, account: AccountData, displayNameOrId: string) => {
+        await FriendsCore.sendRequest(account, displayNameOrId)
+      },
+    )
+
+    ipcMain.on(
+      ElectronAPIEventKeys.FriendsRemove,
+      async (_, account: AccountData, friendId: string) => {
+        await FriendsCore.removeFriend(account, friendId)
+      },
+    )
+
+    ipcMain.on(
+      ElectronAPIEventKeys.FriendsBulkAccept,
+      async (_, accounts: AccountDataList) => {
+        await FriendsCore.bulkAccept(accounts)
+      },
+    )
+
+    ipcMain.on(
+      ElectronAPIEventKeys.FriendsBulkSend,
+      async (_, accounts: AccountDataList, displayNameOrId: string) => {
+        await FriendsCore.bulkSend(accounts, displayNameOrId)
+      },
+    )
+
+    /**
+     * Item Shop & Gifting
+     */
+
+    ipcMain.on(ElectronAPIEventKeys.ItemShopGetCatalog, async () => {
+      await ItemShopCore.getCatalog()
+    })
+
+    ipcMain.on(
+      ElectronAPIEventKeys.ItemShopGetGiftingInfo,
+      async (_, account: AccountData) => {
+        await ItemShopCore.getGiftingInfo(account)
+      },
+    )
+
+    ipcMain.on(
+      ElectronAPIEventKeys.ItemShopSendGift,
+      async (_, payload: any) => {
+        await ItemShopCore.sendGift(payload)
       },
     )
 
@@ -910,6 +994,7 @@ const gotTheLock = app.requestSingleInstanceLock()
 
       if (accounts.size > 0) {
         MCPClientQuestLogin.save([...accounts.values()])
+        await MCPDailyQuests.autoRerollAll([...accounts.values()])
       }
     }
 

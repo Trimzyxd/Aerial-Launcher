@@ -105,6 +105,36 @@ export function SidebarMenu({
             </Link>
           )}
 
+          <Link
+            to="/friends"
+            className={cn(
+              'pl-3 py-2 text-muted-foreground flex items-center justify-between',
+              currentClassNameHover,
+            )}
+            activeProps={{
+              className: cn(activeClassName),
+            }}
+            onClick={goToPage}
+            onAuxClick={whatIsThis()}
+          >
+            <span>Friends & Requests</span>
+          </Link>
+
+          <Link
+            to="/item-shop"
+            className={cn(
+              'pl-3 py-2 text-muted-foreground flex items-center justify-between',
+              currentClassNameHover,
+            )}
+            activeProps={{
+              className: cn(activeClassName),
+            }}
+            onClick={goToPage}
+            onAuxClick={whatIsThis()}
+          >
+            <span>Item Shop & Gifting</span>
+          </Link>
+
           {getMenuOptionVisibility('stwOperations', true) && (
             <>
               <Title className="pb-0">{t('stw-operations.title')}</Title>

@@ -22,6 +22,26 @@ export function findUserByAccountId({
   )
 }
 
+export function findUsersByAccountIds({
+  accessToken,
+  accountIds,
+}: {
+  accessToken: string
+  accountIds: string[]
+}) {
+  const query = accountIds
+    .map((id) => `accountId=${encodeURIComponent(id)}`)
+    .join('&')
+
+  return publicAccountService.get<
+    Array<{ id: string; displayName: string; externalAuths?: Record<string, unknown> }>
+  >(`?${query}`, {
+    headers: {
+      Authorization: `bearer ${accessToken}`,
+    },
+  })
+}
+
 export function findUserByDisplayName({
   accessToken,
   displayName,
