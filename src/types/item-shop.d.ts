@@ -46,6 +46,7 @@ export type SendGiftPayload = {
   price: number
   giftWrapTemplateId: string
   personalMessage: string
+  isDryRun?: boolean
 }
 
 export type SendGiftResult = {
@@ -55,5 +56,6 @@ export type SendGiftResult = {
   receiverDisplayName: string
   itemName: string
   price: number
+  isDryRun?: boolean
   errorMessage?: string | null
 }

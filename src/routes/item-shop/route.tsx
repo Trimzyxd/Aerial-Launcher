@@ -92,6 +92,7 @@ export function ItemShopRouteComponent() {
   const [searchRecipient, setSearchRecipient] = useState<string>('')
   const [selectedGiftBox, setSelectedGiftBox] = useState<string>(GIFT_BOXES[0].id)
   const [customMessage, setCustomMessage] = useState<string>('Enjoy your gift!')
+  const [safeTestMode, setSafeTestMode] = useState<boolean>(true)
   const [sendingGift, setSendingGift] = useState(false)
 
   const currentAccount = useMemo(
@@ -150,7 +151,14 @@ export function ItemShopRouteComponent() {
     const subSendGift = window.electronAPI.notificationSendGift(async (res: SendGiftResult) => {
       setSendingGift(false)
       if (res.success) {
-        toast.success(`Successfully gifted ${res.itemName} to ${res.receiverDisplayName}!`)
+        if (res.isDryRun) {
+          toast.success(
+            `Safe Test Passed! (0 V-Bucks used) Eligible to gift ${res.itemName} to ${res.receiverDisplayName}.`,
+            { duration: 5000 }
+          )
+        } else {
+          toast.success(`Successfully gifted ${res.itemName} to ${res.receiverDisplayName}!`)
+        }
         setIsModalOpen(false)
         if (currentAccount) fetchGiftingInfo(currentAccount)
       } else {
@@ -210,12 +218,12 @@ export function ItemShopRouteComponent() {
   const handleSendGiftSubmit = () => {
     if (!currentAccount || !selectedItem || !selectedFriend) return
 
-    if (giftingInfo && giftingInfo.vbucks < selectedItem.price) {
+    if (!safeTestMode && giftingInfo && giftingInfo.vbucks < selectedItem.price) {
       toast.error('Insufficient V-Bucks balance on this account!')
       return
     }
 
-    if (giftingInfo && giftingInfo.giftsRemainingToday <= 0) {
+    if (!safeTestMode && giftingInfo && giftingInfo.giftsRemainingToday <= 0) {
       toast.error('You have reached the 5 daily gift limit on this account.')
       return
     }
@@ -230,44 +238,37 @@ export function ItemShopRouteComponent() {
       price: selectedItem.price,
       giftWrapTemplateId: selectedGiftBox,
       personalMessage: customMessage.trim() || 'Enjoy your gift!',
+      isDryRun: safeTestMode,
     }
 
     window.electronAPI.sendGift(payload)
   }
 
   return (
-    <div className="flex flex-col gap-5 w-full">
+    <div className="flex flex-col gap-4 w-full">
       {/* Breadcrumb */}
       <Breadcrumb>
         <BreadcrumbList>
           <HomeBreadcrumb />
           <BreadcrumbSeparator />
           <BreadcrumbItem>
-            <BreadcrumbPage>Item Shop & Direct Gifting</BreadcrumbPage>
+            <BreadcrumbPage>Item Shop</BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
 
       {/* Header & Gifter Account Info Bar */}
-      <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between pb-3 border-b">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <Gift className="size-6 text-primary" />
-            Fortnite Item Shop & Direct Gifting
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Browse today's rotating Item Shop cosmetics and dispatch gifts directly to friends without opening Fortnite.
-          </p>
-        </div>
+      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between pb-2 border-b">
+        <h1 className="text-xl font-bold tracking-tight">Fortnite Item Shop & Gifting</h1>
 
         {/* Selected Gifter Account Summary Pill */}
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2 bg-muted/60 px-3 py-1.5 rounded-lg border">
-            <User className="size-4 text-muted-foreground" />
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2 bg-muted/60 px-2.5 py-1 rounded-md border text-xs">
+            <User className="size-3.5 text-muted-foreground" />
             <select
               value={currentAccount?.accountId || ''}
               onChange={(e) => setSelectedAccountId(e.target.value)}
-              className="bg-transparent text-sm font-semibold focus:outline-none cursor-pointer"
+              className="bg-transparent font-medium focus:outline-none cursor-pointer"
             >
               {accounts.map((acc) => (
                 <option key={acc.accountId} value={acc.accountId} className="bg-popover text-popover-foreground">
@@ -279,15 +280,15 @@ export function ItemShopRouteComponent() {
             <span className="text-muted-foreground">|</span>
 
             {/* V-Bucks Balance */}
-            <div className="flex items-center gap-1 text-sm font-bold text-blue-500">
+            <div className="flex items-center gap-1 font-bold text-blue-500">
               <span>{giftingInfo ? giftingInfo.vbucks.toLocaleString() : '...'}</span>
-              <span className="text-xs uppercase">VB</span>
+              <span className="uppercase text-[10px]">VB</span>
             </div>
 
             <span className="text-muted-foreground">|</span>
 
             {/* Daily Gift Slots */}
-            <div className="flex items-center gap-1 text-xs">
+            <div className="flex items-center gap-1">
               <span className="text-muted-foreground">Slots:</span>
               <span className="font-semibold">
                 {giftingInfo ? `${giftingInfo.giftsRemainingToday}/5` : '...'}
@@ -303,9 +304,9 @@ export function ItemShopRouteComponent() {
               fetchGiftingInfo()
             }}
             disabled={loadingCatalog || loadingGiftingInfo}
-            className="flex items-center gap-1.5"
+            className="h-8 px-2.5 text-xs flex items-center gap-1.5"
           >
-            <RefreshCw className={`size-4 ${loadingCatalog || loadingGiftingInfo ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`size-3.5 ${loadingCatalog || loadingGiftingInfo ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
         </div>
@@ -436,35 +437,58 @@ export function ItemShopRouteComponent() {
       {/* GIFTING MODAL DIALOG */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Gift className="size-5 text-primary" />
+          <DialogHeader className="pb-1">
+            <DialogTitle className="flex items-center gap-2 text-base font-semibold">
+              <Gift className="size-4 text-primary" />
               Gift Cosmetic
             </DialogTitle>
-            <DialogDescription>
-              Dispatch this cosmetic straight to your friend's Fortnite locker.
-            </DialogDescription>
           </DialogHeader>
 
           {selectedItem && (
-            <div className="flex flex-col gap-4 py-2">
+            <div className="flex flex-col gap-3 py-1">
               {/* Item Info Box */}
-              <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted/40">
-                <div className="size-16 rounded bg-muted flex items-center justify-center overflow-hidden shrink-0 border">
+              <div className="flex items-center gap-3 p-2.5 rounded-lg border bg-muted/40">
+                <div className="size-14 rounded bg-muted flex items-center justify-center overflow-hidden shrink-0 border">
                   {selectedItem.images.icon ? (
                     <img src={selectedItem.images.icon} alt={selectedItem.name} className="size-full object-contain" />
                   ) : (
-                    <Sparkles className="size-6 text-muted-foreground" />
+                    <Sparkles className="size-5 text-muted-foreground" />
                   )}
                 </div>
 
                 <div className="flex flex-col flex-1 overflow-hidden">
-                  <span className="font-bold text-base truncate">{selectedItem.name}</span>
-                  <span className="text-xs text-muted-foreground">{selectedItem.rarity} · {selectedItem.type}</span>
-                  <div className="flex items-center gap-1 mt-1 text-sm font-bold text-blue-500">
+                  <span className="font-semibold text-sm truncate">{selectedItem.name}</span>
+                  <span className="text-[11px] text-muted-foreground">{selectedItem.rarity} · {selectedItem.type}</span>
+                  <div className="flex items-center gap-1 mt-0.5 text-xs font-bold text-blue-500">
                     <span>{selectedItem.price.toLocaleString()} V-Bucks</span>
                   </div>
                 </div>
+              </div>
+
+              {/* Safe Test Mode Switch */}
+              <div className="flex items-center justify-between p-2.5 rounded-lg border bg-muted/30 text-xs">
+                <div className="flex flex-col">
+                  <span className="font-semibold flex items-center gap-1.5 text-green-500">
+                    <ShieldCheck className="size-4" />
+                    Safe Test Mode (0 V-Bucks)
+                  </span>
+                  <span className="text-[11px] text-muted-foreground">
+                    {safeTestMode
+                      ? 'Verifies session & friendship eligibility with 0 V-Bucks consumed.'
+                      : 'Live Mode: Real V-Bucks will be spent!'}
+                  </span>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={safeTestMode ? 'default' : 'outline'}
+                  onClick={() => setSafeTestMode(!safeTestMode)}
+                  className={`h-7 px-2.5 text-xs font-semibold ${
+                    safeTestMode ? 'bg-green-600 hover:bg-green-700 text-white' : ''
+                  }`}
+                >
+                  {safeTestMode ? 'Safe Test: ON' : 'Safe Test: OFF'}
+                </Button>
               </div>
 
               {/* Gifter Account Confirmation */}
@@ -476,15 +500,17 @@ export function ItemShopRouteComponent() {
               <div className="flex items-center justify-between text-xs px-1">
                 <span className="text-muted-foreground">Remaining Balance After:</span>
                 <span className="font-semibold text-blue-500">
-                  {giftingInfo ? (giftingInfo.vbucks - selectedItem.price).toLocaleString() : '...'} V-Bucks
+                  {safeTestMode
+                    ? `${giftingInfo?.vbucks.toLocaleString() || '...'} V-Bucks (0 spent)`
+                    : `${giftingInfo ? (giftingInfo.vbucks - selectedItem.price).toLocaleString() : '...'} V-Bucks`}
                 </span>
               </div>
 
               {/* Recipient Picker */}
-              <div className="flex flex-col gap-2">
-                <label className="text-sm font-semibold flex items-center justify-between">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold flex items-center justify-between">
                   <span>Select Recipient Friend</span>
-                  <span className="text-xs text-muted-foreground font-normal">
+                  <span className="text-[11px] text-muted-foreground font-normal">
                     {giftingInfo?.eligibleFriends.length || 0} friends loaded
                   </span>
                 </label>
@@ -494,13 +520,13 @@ export function ItemShopRouteComponent() {
                   placeholder="Filter friends by name..."
                   value={searchRecipient}
                   onChange={(e) => setSearchRecipient(e.target.value)}
-                  className="h-8 text-xs mb-1"
+                  className="h-8 text-xs"
                 />
 
                 <select
                   value={selectedRecipientId}
                   onChange={(e) => setSelectedRecipientId(e.target.value)}
-                  className="h-10 px-3 rounded-md border bg-background text-sm font-medium focus:outline-none focus:ring-1 focus:ring-ring"
+                  className="h-9 px-2.5 rounded-md border bg-background text-xs font-medium focus:outline-none"
                 >
                   {filteredFriends.map((f) => (
                     <option key={f.accountId} value={f.accountId}>
@@ -511,17 +537,17 @@ export function ItemShopRouteComponent() {
 
                 {/* 48h Eligibility Indicator */}
                 {selectedFriend && (
-                  <div className="mt-1">
+                  <div>
                     {selectedFriend.isEligible48h ? (
                       <div className="flex items-center gap-1.5 text-xs text-green-600 bg-green-500/10 px-2.5 py-1.5 rounded border border-green-500/20 font-medium">
-                        <ShieldCheck className="size-4 shrink-0" />
+                        <ShieldCheck className="size-3.5 shrink-0" />
                         <span>Eligible: Friends for over 48 hours. Ready to receive gift!</span>
                       </div>
                     ) : (
                       <div className="flex items-center gap-1.5 text-xs text-yellow-600 bg-yellow-500/10 px-2.5 py-1.5 rounded border border-yellow-500/20 font-medium">
-                        <AlertCircle className="size-4 shrink-0" />
+                        <AlertCircle className="size-3.5 shrink-0" />
                         <span>
-                          Cooldown active: Epic Games requires {selectedFriend.hoursRemaining} more hours of friendship before this user can receive gifts.
+                          Cooldown active: {selectedFriend.hoursRemaining}h remaining before this friend can receive gifts.
                         </span>
                       </div>
                     )}
@@ -530,12 +556,12 @@ export function ItemShopRouteComponent() {
               </div>
 
               {/* Gift Box Style */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-semibold">Gift Wrap Box</label>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold">Gift Wrap Box</label>
                 <select
                   value={selectedGiftBox}
                   onChange={(e) => setSelectedGiftBox(e.target.value)}
-                  className="h-9 px-3 rounded-md border bg-background text-sm font-medium focus:outline-none focus:ring-1 focus:ring-ring"
+                  className="h-8 px-2.5 rounded-md border bg-background text-xs font-medium focus:outline-none"
                 >
                   {GIFT_BOXES.map((box) => (
                     <option key={box.id} value={box.id}>
@@ -546,35 +572,49 @@ export function ItemShopRouteComponent() {
               </div>
 
               {/* Personalized Message */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-semibold">Personalized Gift Message</label>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold">Personalized Gift Message</label>
                 <Input
                   placeholder="e.g. Enjoy your skin! - From Trimzy"
                   value={customMessage}
                   maxLength={100}
                   onChange={(e) => setCustomMessage(e.target.value)}
+                  className="h-8 text-xs"
                 />
               </div>
             </div>
           )}
 
           <DialogFooter className="mt-2">
-            <Button variant="outline" onClick={() => setIsModalOpen(false)} disabled={sendingGift}>
+            <Button variant="outline" size="sm" onClick={() => setIsModalOpen(false)} disabled={sendingGift} className="h-8 text-xs">
               Cancel
             </Button>
-            <Button
-              onClick={handleSendGiftSubmit}
-              disabled={
-                sendingGift ||
-                !selectedFriend ||
-                !selectedFriend.isEligible48h ||
-                (giftingInfo !== null && giftingInfo.vbucks < (selectedItem?.price || 0))
-              }
-              className="flex items-center gap-2 bg-primary"
-            >
-              {sendingGift ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
-              Confirm & Send Gift
-            </Button>
+            {safeTestMode ? (
+              <Button
+                size="sm"
+                onClick={handleSendGiftSubmit}
+                disabled={sendingGift || !selectedFriend || !selectedFriend.isEligible48h}
+                className="h-8 flex items-center gap-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold"
+              >
+                {sendingGift ? <Loader2 className="size-3.5 animate-spin" /> : <ShieldCheck className="size-3.5" />}
+                Run Safe Test (0 V-Bucks)
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                onClick={handleSendGiftSubmit}
+                disabled={
+                  sendingGift ||
+                  !selectedFriend ||
+                  !selectedFriend.isEligible48h ||
+                  (giftingInfo !== null && giftingInfo.vbucks < (selectedItem?.price || 0))
+                }
+                className="h-8 flex items-center gap-1.5 bg-primary text-xs font-semibold"
+              >
+                {sendingGift ? <Loader2 className="size-3.5 animate-spin" /> : <Send className="size-3.5" />}
+                Confirm & Send Gift
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

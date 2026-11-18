@@ -14,54 +14,95 @@ import { Authentication } from './authentication'
 
 import { getFriendsSummary } from '../../services/endpoints/friends'
 import { findUsersByAccountIds } from '../../services/endpoints/lookup'
-import { getQueryProfile, giftCatalogEntry } from '../../services/endpoints/mcp'
+import {
+  getQueryProfileMainProfile,
+  giftCatalogEntry,
+} from '../../services/endpoints/mcp'
 
 export class ItemShopCore {
   static async getCatalog() {
     try {
-      const response = await axios.get('https://fortnite-api.com/v2/shop/br')
-      const data = response.data?.data
+      const response = await axios.get('https://fortnite-api.com/v2/shop', {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+        },
+      })
+      const entries = response.data?.data?.entries || []
 
       const items: Array<ShopItemEntry> = []
+      const seen = new Set<string>()
 
-      const processEntries = (entries: any[], defaultCategory = 'Featured') => {
-        if (!Array.isArray(entries)) return
+      for (const entry of entries) {
+        if (entry.giftable === false) continue
+        const finalPrice = Number(entry.finalPrice || 0)
+        if (finalPrice <= 0) continue
 
-        for (const entry of entries) {
-          const firstItem = entry.items?.[0] || entry.bundle || {}
-          const name = entry.bundle?.name || firstItem?.name || entry.devName || 'Unknown Item'
-          const description = entry.bundle?.info || firstItem?.description || ''
-          const rarity = firstItem?.rarity?.value || 'Common'
-          const rarityColor = firstItem?.rarity?.backendValue || '#888888'
+        const offerId = entry.offerId
+        if (!offerId || seen.has(offerId)) continue
+        seen.add(offerId)
 
-          const images = {
-            icon: firstItem?.images?.icon || firstItem?.images?.smallIcon || entry.bundle?.image,
-            featured: firstItem?.images?.featured || entry.bundle?.image || firstItem?.images?.icon,
-            background: entry.newDisplayAsset?.materialInstances?.[0]?.images?.Background,
-          }
+        const renderImg = entry.newDisplayAsset?.renderImages?.[0]?.image
+        const layoutName = entry.layout?.name || 'Featured'
 
-          items.push({
-            id: entry.offerId || firstItem?.id || Math.random().toString(),
-            name,
-            description,
-            type: firstItem?.type?.value || 'Cosmetic',
-            rarity,
-            rarityColor,
-            price: entry.finalPrice ?? 0,
-            regularPrice: entry.regularPrice ?? entry.finalPrice ?? 0,
-            banner: entry.banner?.value,
-            category: entry.layout?.category || entry.section?.name || defaultCategory,
-            offerId: entry.offerId,
-            giftable: entry.giftable !== false,
-            images,
-          })
+        let name = ''
+        let rarity = 'Common'
+        let type = 'Item'
+        let imageUrl = ''
+        let category = layoutName
+
+        if (entry.bundle?.name) {
+          name = entry.bundle.name
+          category = 'Bundles'
+          type = 'Bundle'
+          imageUrl =
+            renderImg ||
+            entry.bundle.image ||
+            entry.brItems?.[0]?.images?.featured ||
+            entry.brItems?.[0]?.images?.icon ||
+            ''
+        } else if (entry.brItems && entry.brItems.length > 0) {
+          const first = entry.brItems[0]
+          name = first.name || ''
+          rarity = first.rarity?.displayValue || first.rarity?.value || 'Rare'
+          type = first.type?.displayValue || first.type?.value || 'Cosmetic'
+          imageUrl = renderImg || first.images?.featured || first.images?.icon || ''
+        } else if (entry.tracks && entry.tracks.length > 0) {
+          const track = entry.tracks[0]
+          name = track.title ? `${track.title} - ${track.artist || ''}`.trim() : 'Jam Track'
+          category = 'Jam Tracks'
+          type = 'Jam Track'
+          imageUrl = track.albumArt || renderImg || ''
+        } else if (entry.cars && entry.cars.length > 0) {
+          const car = entry.cars[0]
+          name = car.name || 'Vehicle'
+          category = 'Vehicles'
+          type = 'Vehicle'
+          imageUrl = renderImg || car.images?.large || car.images?.icon || ''
+        } else {
+          name = entry.devName?.replace(/^\[VIRTUAL\]\d+\s*x\s*/i, '').replace(/\s*for\s*-?\d+\s*MtxCurrency/i, '') || 'Item'
         }
-      }
 
-      if (data?.featured?.entries) processEntries(data.featured.entries, 'Featured')
-      if (data?.daily?.entries) processEntries(data.daily.entries, 'Daily')
-      if (data?.specialFeatured?.entries) processEntries(data.specialFeatured.entries, 'Special')
-      if (data?.specialDaily?.entries) processEntries(data.specialDaily.entries, 'Special Daily')
+        if (!name) continue
+
+        items.push({
+          id: offerId,
+          name,
+          description: entry.bundle?.info || entry.brItems?.[0]?.description || '',
+          type,
+          rarity,
+          rarityColor: '#888888',
+          price: finalPrice,
+          regularPrice: entry.regularPrice || finalPrice,
+          banner: entry.banner?.value,
+          category,
+          offerId,
+          giftable: true,
+          images: {
+            icon: imageUrl,
+            featured: imageUrl,
+          },
+        })
+      }
 
       MainWindow.instance.webContents.send(
         ElectronAPIEventKeys.ItemShopGetCatalogNotification,
@@ -88,10 +129,9 @@ export class ItemShopCore {
       if (!accessToken) return
 
       // 1. Fetch common_core profile for V-Bucks and Gift History
-      const profileResponse = await getQueryProfile({
+      const profileResponse = await getQueryProfileMainProfile({
         accessToken,
         accountId: account.accountId,
-        profileId: 'common_core',
       })
 
       const profile = profileResponse.data?.profileChanges?.[0]?.profile
@@ -99,9 +139,9 @@ export class ItemShopCore {
       const stats = profile?.stats?.attributes || {}
 
       let vbucks = 0
-      for (const [key, item] of Object.entries(items) as [string, any][]) {
-        if (key.includes('Currency:Mtx') || item?.templateId?.includes('Currency:Mtx')) {
-          vbucks += item?.quantity || 0
+      for (const item of Object.values(items) as any[]) {
+        if (item?.templateId?.startsWith('Currency:Mtx')) {
+          vbucks += item?.quantity ?? 0
         }
       }
 
@@ -116,51 +156,56 @@ export class ItemShopCore {
       const canSendGifts = stats.allowed_to_send_gifts !== false
 
       // 2. Fetch Friends Summary for 48h check
-      const friendsSummary = await getFriendsSummary({
-        accessToken,
-        accountId: account.accountId,
-      })
+      const eligibleFriends: Array<EligibleFriend> = []
+      try {
+        const friendsSummary = await getFriendsSummary({
+          accessToken,
+          accountId: account.accountId,
+        })
 
-      const rawFriends = friendsSummary.data?.friends || []
-      const friendIds = rawFriends.map((f) => f.accountId)
+        const rawFriends = friendsSummary.data?.friends || []
+        const friendIds = rawFriends.map((f) => f.accountId)
 
-      const namesMap = new Map<string, string>()
-      const chunkSize = 100
-      for (let i = 0; i < friendIds.length; i += chunkSize) {
-        const chunk = friendIds.slice(i, i + chunkSize)
-        try {
-          const lookup = await findUsersByAccountIds({ accessToken, accountIds: chunk })
-          if (Array.isArray(lookup.data)) {
-            for (const u of lookup.data) {
-              if (u.id && u.displayName) namesMap.set(u.id, u.displayName)
+        const namesMap = new Map<string, string>()
+        const chunkSize = 100
+        for (let i = 0; i < friendIds.length; i += chunkSize) {
+          const chunk = friendIds.slice(i, i + chunkSize)
+          try {
+            const lookup = await findUsersByAccountIds({ accessToken, accountIds: chunk })
+            if (Array.isArray(lookup.data)) {
+              for (const u of lookup.data) {
+                if (u.id && u.displayName) namesMap.set(u.id, u.displayName)
+              }
             }
+          } catch {
+            // Continue
           }
-        } catch {
-          // Continue
         }
+
+        for (const f of rawFriends) {
+          const createdMs = new Date(f.created).getTime()
+          const diffMs = now - createdMs
+          const isEligible48h = diffMs >= 48 * 3600 * 1000
+          const hoursRemaining = isEligible48h ? 0 : Math.max(0, Math.ceil((48 * 3600 * 1000 - diffMs) / 3600000))
+
+          eligibleFriends.push({
+            accountId: f.accountId,
+            displayName: namesMap.get(f.accountId) || f.accountId,
+            created: f.created,
+            isEligible48h,
+            hoursRemaining,
+          })
+        }
+
+        eligibleFriends.sort((a, b) => {
+          if (a.isEligible48h && !b.isEligible48h) return -1
+          if (!a.isEligible48h && b.isEligible48h) return 1
+          return a.displayName.localeCompare(b.displayName)
+        })
+      } catch (friendsError) {
+        // Log friends fetch issue without failing V-Bucks display
+        console.error('[ItemShopCore] Error fetching friends summary:', friendsError)
       }
-
-      const eligibleFriends: Array<EligibleFriend> = rawFriends.map((f) => {
-        const createdMs = new Date(f.created).getTime()
-        const diffMs = now - createdMs
-        const isEligible48h = diffMs >= 48 * 3600 * 1000
-        const hoursRemaining = isEligible48h ? 0 : Math.max(0, Math.ceil((48 * 3600 * 1000 - diffMs) / 3600000))
-
-        return {
-          accountId: f.accountId,
-          displayName: namesMap.get(f.accountId) || f.accountId,
-          created: f.created,
-          isEligible48h,
-          hoursRemaining,
-        }
-      })
-
-      // Sort: 48h eligible first, then alphabetical
-      eligibleFriends.sort((a, b) => {
-        if (a.isEligible48h && !b.isEligible48h) return -1
-        if (!a.isEligible48h && b.isEligible48h) return 1
-        return a.displayName.localeCompare(b.displayName)
-      })
 
       const result: AccountGiftingInfo = {
         accountId: account.accountId,
@@ -175,8 +220,8 @@ export class ItemShopCore {
         ElectronAPIEventKeys.ItemShopGetGiftingInfoNotification,
         result
       )
-    } catch {
-      // Fallback
+    } catch (error) {
+      console.error('[ItemShopCore] Error fetching gifting info:', error)
     }
   }
 
@@ -193,12 +238,38 @@ export class ItemShopCore {
             receiverDisplayName: payload.receiverDisplayName,
             itemName: payload.itemName,
             price: payload.price,
+            isDryRun: payload.isDryRun,
             errorMessage: 'Authentication failed for gifter account',
           } as SendGiftResult
         )
         return
       }
 
+      // If dry-run test mode: DO NOT call giftCatalogEntry!
+      if (payload.isDryRun) {
+        // Query common_core to verify connection and session validity
+        await getQueryProfileMainProfile({
+          accessToken,
+          accountId: payload.account.accountId,
+        })
+
+        MainWindow.instance.webContents.send(
+          ElectronAPIEventKeys.ItemShopSendGiftNotification,
+          {
+            success: true,
+            accountId: payload.account.accountId,
+            receiverAccountId: payload.receiverAccountId,
+            receiverDisplayName: payload.receiverDisplayName,
+            itemName: payload.itemName,
+            price: payload.price,
+            isDryRun: true,
+            errorMessage: null,
+          } as SendGiftResult
+        )
+        return
+      }
+
+      // Real purchase
       await giftCatalogEntry({
         accessToken,
         accountId: payload.account.accountId,
@@ -218,6 +289,7 @@ export class ItemShopCore {
           receiverDisplayName: payload.receiverDisplayName,
           itemName: payload.itemName,
           price: payload.price,
+          isDryRun: false,
           errorMessage: null,
         } as SendGiftResult
       )
@@ -231,6 +303,7 @@ export class ItemShopCore {
           receiverDisplayName: payload.receiverDisplayName,
           itemName: payload.itemName,
           price: payload.price,
+          isDryRun: payload.isDryRun,
           errorMessage: error?.response?.data?.errorMessage || error?.message || 'Gifting request failed',
         } as SendGiftResult
       )
