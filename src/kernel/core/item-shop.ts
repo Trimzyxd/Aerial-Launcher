@@ -324,34 +324,53 @@ export class ItemShopCore {
         error?.message ||
         'Gifting request failed'
 
-      const rawCombined = `${rawError} ${responseData?.errorCode || ''} ${responseData?.numericErrorCode || ''}`.toLowerCase()
+      const errorCode = String(responseData?.errorCode || '').toLowerCase()
+      const errorMessage = String(responseData?.errorMessage || '').toLowerCase()
+      const numericErrorCode = Number(responseData?.numericErrorCode)
+      const rawCombined = `${rawError} ${errorCode} ${errorMessage}`.toLowerCase()
+
+      console.error('[ItemShopCore] SendGift error responseData:', {
+        errorCode,
+        numericErrorCode,
+        errorMessage,
+        rawError,
+      })
 
       let friendlyMessage = String(rawError)
 
-      if (
+      const isSelfGift = payload.account.accountId === payload.receiverAccountId
+
+      if (isSelfGift) {
+        friendlyMessage = `Cannot send a gift to yourself (${payload.receiverDisplayName}). Use the "Buy Item" button to purchase cosmetics directly for this account.`
+      } else if (
+        numericErrorCode === 28004 ||
+        rawCombined.includes('purchase_not_allowed') ||
         rawCombined.includes('already_owned') ||
         rawCombined.includes('already own') ||
         rawCombined.includes('owns') ||
+        rawCombined.includes('item_already_owned') ||
         rawCombined.includes('origination_item_already_owned')
       ) {
-        friendlyMessage = `${payload.receiverDisplayName} already owns ${payload.itemName}.`
+        friendlyMessage = `${payload.receiverDisplayName} already owns ${payload.itemName}. Epic Games does not allow duplicate gifting.`
       } else if (
+        numericErrorCode === 28001 ||
         rawCombined.includes('insufficient_funds') ||
-        rawCombined.includes('not enough') ||
-        rawCombined.includes('vbucks') ||
-        rawCombined.includes('currency')
+        rawCombined.includes('not_enough_funds') ||
+        rawCombined.includes('not_enough_mtx') ||
+        rawCombined.includes('insufficient_balance')
       ) {
         friendlyMessage = `Insufficient V-Bucks balance to gift ${payload.itemName}.`
       } else if (
+        numericErrorCode === 28015 ||
         rawCombined.includes('daily_limit') ||
-        rawCombined.includes('limit') ||
+        rawCombined.includes('daily_gift_limit') ||
         rawCombined.includes('max_gifts')
       ) {
         friendlyMessage = `Daily gifting limit reached (5/5 gifts sent today).`
       } else if (
+        numericErrorCode === 28014 ||
         rawCombined.includes('not_eligible') ||
-        rawCombined.includes('eligible') ||
-        rawCombined.includes('friend') ||
+        rawCombined.includes('recipient_not_eligible') ||
         rawCombined.includes('friendship')
       ) {
         friendlyMessage = `${payload.receiverDisplayName} is not eligible to receive gifts yet (must be Epic friends for at least 48 hours).`
@@ -438,21 +457,35 @@ export class ItemShopCore {
         error?.message ||
         'Item purchase failed'
 
-      const rawCombined = `${rawError} ${responseData?.errorCode || ''} ${responseData?.numericErrorCode || ''}`.toLowerCase()
+      const errorCode = String(responseData?.errorCode || '').toLowerCase()
+      const errorMessage = String(responseData?.errorMessage || '').toLowerCase()
+      const numericErrorCode = Number(responseData?.numericErrorCode)
+      const rawCombined = `${rawError} ${errorCode} ${errorMessage}`.toLowerCase()
+
+      console.error('[ItemShopCore] BuyItem error responseData:', {
+        errorCode,
+        numericErrorCode,
+        errorMessage,
+        rawError,
+      })
 
       let friendlyMessage = String(rawError)
 
       if (
+        numericErrorCode === 28004 ||
+        rawCombined.includes('purchase_not_allowed') ||
         rawCombined.includes('already_owned') ||
         rawCombined.includes('already own') ||
-        rawCombined.includes('owns')
+        rawCombined.includes('owns') ||
+        rawCombined.includes('item_already_owned')
       ) {
-        friendlyMessage = `This account already owns ${payload.itemName}.`
+        friendlyMessage = `This account (${payload.account.displayName}) already owns ${payload.itemName}.`
       } else if (
+        numericErrorCode === 28001 ||
         rawCombined.includes('insufficient_funds') ||
-        rawCombined.includes('not enough') ||
-        rawCombined.includes('vbucks') ||
-        rawCombined.includes('currency')
+        rawCombined.includes('not_enough_funds') ||
+        rawCombined.includes('not_enough_mtx') ||
+        rawCombined.includes('insufficient_balance')
       ) {
         friendlyMessage = `Insufficient V-Bucks balance to purchase ${payload.itemName}.`
       }

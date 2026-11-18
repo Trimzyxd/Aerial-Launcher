@@ -228,7 +228,7 @@ export function ItemShopRouteComponent() {
   const [buyingItem, setBuyingItem] = useState(false)
   const [buySafeTestMode, setBuySafeTestMode] = useState<boolean>(true)
 
-  // Floating Notification Pop-up State (Prominent non-modal top-right banner)
+  // Centered Pop-up Notification State
   const [popup, setPopup] = useState<{
     id: number
     type: 'gift-success' | 'gift-error' | 'buy-success' | 'buy-error'
@@ -239,15 +239,6 @@ export function ItemShopRouteComponent() {
     isDryRun?: boolean
     errorMessage?: string
   } | null>(null)
-
-  // Auto-dismiss floating popup after 7 seconds
-  useEffect(() => {
-    if (!popup) return
-    const timer = setTimeout(() => {
-      setPopup(null)
-    }, 7000)
-    return () => clearTimeout(timer)
-  }, [popup?.id])
 
   const currentAccount = useMemo(
     () => accounts.find((acc) => acc.accountId === selectedAccountId) || accounts[0],
@@ -319,11 +310,19 @@ export function ItemShopRouteComponent() {
         })
         if (currentAccount) fetchGiftingInfo(currentAccount)
       } else {
-        const isAlreadyOwned = res.errorMessage?.toLowerCase().includes('already own')
+        const lowerErr = (res.errorMessage || '').toLowerCase()
+        const isAlreadyOwned =
+          lowerErr.includes('already own') ||
+          lowerErr.includes('duplicate') ||
+          lowerErr.includes('cannot send a gift to yourself')
         setPopup({
           id: Date.now(),
           type: 'gift-error',
-          title: isAlreadyOwned ? 'Recipient Already Owns This Item' : 'Gift Could Not Be Sent',
+          title: lowerErr.includes('yourself')
+            ? 'Cannot Gift To Yourself'
+            : isAlreadyOwned
+            ? 'Recipient Already Owns This Item'
+            : 'Gift Could Not Be Sent',
           itemName: res.itemName,
           recipientName: res.receiverDisplayName,
           price: res.price,
@@ -1024,140 +1023,152 @@ export function ItemShopRouteComponent() {
         </DialogContent>
       </Dialog>
 
-      {/* FLOATING NOTIFICATION POP-UP (NON-MODAL) */}
+      {/* CENTERED POP-UP NOTIFICATION WITH CONTINUE BUTTON */}
       {popup && (
         <div
-          role="alert"
-          aria-live="assertive"
-          className={cn(
-            'fixed top-5 right-5 z-[9999] w-[calc(100vw-2.5rem)] sm:w-[410px]',
-            'bg-zinc-950/95 backdrop-blur-md rounded-xl p-4 shadow-2xl border transition-all duration-300 animate-in fade-in slide-in-from-top-4',
-            popup.type.includes('success')
-              ? 'border-emerald-500/40 shadow-emerald-950/20'
-              : 'border-rose-500/40 shadow-rose-950/20'
-          )}
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200"
         >
-          {/* Header Row */}
-          <div className="flex items-start gap-3">
-            <div
-              className={cn(
-                'size-9 shrink-0 rounded-lg flex items-center justify-center border',
-                popup.type.includes('success')
-                  ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
-                  : 'bg-rose-500/15 border-rose-500/30 text-rose-400'
-              )}
-            >
-              {popup.type.includes('success') ? (
-                <Check className="size-5" />
-              ) : popup.errorMessage?.toLowerCase().includes('already own') ? (
-                <AlertTriangle className="size-5" />
-              ) : (
-                <AlertCircle className="size-5" />
-              )}
-            </div>
-
-            <div className="flex-1 min-w-0 pr-1">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span
-                  className={cn(
-                    'text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded',
-                    popup.type.includes('success')
-                      ? popup.isDryRun
-                        ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
-                        : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                      : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
-                  )}
-                >
-                  {popup.type === 'gift-success'
-                    ? popup.isDryRun
-                      ? 'Safe Test Verified'
-                      : 'Gift Dispatched'
-                    : popup.type === 'buy-success'
-                    ? popup.isDryRun
-                      ? 'Safe Test Verified'
-                      : 'Cosmetic Added'
-                    : popup.errorMessage?.toLowerCase().includes('already own')
-                    ? 'Already Owned'
-                    : 'Action Failed'}
-                </span>
-              </div>
-              <h4 className="text-sm font-bold text-foreground mt-1 leading-snug">
-                {popup.title}
-              </h4>
-            </div>
-
-            {/* Manual Dismiss Button */}
+          <div
+            className={cn(
+              'w-full max-w-[420px] bg-zinc-950/95 border rounded-2xl p-6 shadow-2xl space-y-4 animate-in zoom-in-95 duration-200 text-foreground relative',
+              popup.type.includes('success')
+                ? 'border-emerald-500/40 shadow-emerald-950/40'
+                : 'border-rose-500/40 shadow-rose-950/40'
+            )}
+          >
+            {/* Top-Right Dismiss X Button */}
             <button
               type="button"
               onClick={() => setPopup(null)}
-              className="text-zinc-400 hover:text-foreground p-1 rounded-md hover:bg-white/10 transition-colors shrink-0"
+              className="absolute top-4 right-4 text-zinc-400 hover:text-foreground p-1 rounded-md hover:bg-white/10 transition-colors"
               aria-label="Dismiss notification"
             >
               <X className="size-4" />
             </button>
-          </div>
 
-          {/* Details Card */}
-          <div className="mt-3 bg-zinc-900/80 rounded-lg border border-zinc-800/80 p-2.5 text-xs space-y-1.5">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-muted-foreground text-[11px]">Cosmetic:</span>
-              <span className="font-semibold text-foreground truncate max-w-[240px]">
-                {popup.itemName}
-              </span>
-            </div>
-
-            {popup.recipientName && (
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-muted-foreground text-[11px]">Recipient:</span>
-                <span className="font-semibold text-foreground truncate max-w-[240px]">
-                  {popup.recipientName}
-                </span>
-              </div>
-            )}
-
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-muted-foreground text-[11px]">V-Bucks:</span>
-              <span
+            {/* Header: Center Icon & Title */}
+            <div className="flex flex-col items-center text-center gap-2 pt-1">
+              <div
                 className={cn(
-                  'font-semibold',
-                  popup.isDryRun
-                    ? 'text-blue-400'
-                    : popup.type.includes('success')
-                    ? 'text-blue-500'
-                    : 'text-zinc-400'
+                  'size-14 rounded-full flex items-center justify-center border shadow-sm',
+                  popup.type.includes('success')
+                    ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
+                    : 'bg-rose-500/15 border-rose-500/30 text-rose-400'
                 )}
               >
-                {popup.isDryRun
-                  ? '0 VB (Safe Test Mode)'
-                  : popup.type.includes('success')
-                  ? `${popup.price.toLocaleString()} VB`
-                  : '0 VB (No charge)'}
-              </span>
-            </div>
-
-            {/* Error or Explanation details */}
-            {popup.errorMessage && (
-              <div className="mt-2 pt-2 border-t border-rose-500/20 bg-rose-500/5 -mx-2.5 -mb-2.5 p-2 rounded-b-lg space-y-0.5">
-                <p className="text-xs text-rose-300 font-medium">
-                  {popup.errorMessage}
-                </p>
-                {popup.errorMessage.toLowerCase().includes('already own') && (
-                  <p className="text-[10px] text-zinc-400 leading-tight">
-                    No V-Bucks were deducted. Epic Games rejects gifting cosmetics that the friend already has in their locker.
-                  </p>
+                {popup.type.includes('success') ? (
+                  <Check className="size-7" />
+                ) : popup.errorMessage?.toLowerCase().includes('already own') ||
+                  popup.errorMessage?.toLowerCase().includes('yourself') ? (
+                  <AlertTriangle className="size-7" />
+                ) : (
+                  <AlertCircle className="size-7" />
                 )}
               </div>
-            )}
 
-            {popup.type.includes('success') && !popup.errorMessage && (
-              <p className="text-[11px] text-zinc-400 pt-1">
-                {popup.isDryRun
-                  ? 'Safe Test Mode verified that this transaction is allowed by Epic Games without spending any V-Bucks.'
-                  : popup.type === 'gift-success'
-                  ? `Successfully sent directly to ${popup.recipientName || 'your friend'}.`
-                  : 'Successfully added to your Fortnite locker.'}
-              </p>
-            )}
+              <span
+                className={cn(
+                  'text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded mt-1',
+                  popup.type.includes('success')
+                    ? popup.isDryRun
+                      ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                      : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                    : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                )}
+              >
+                {popup.type === 'gift-success'
+                  ? popup.isDryRun
+                    ? 'Safe Test Verified'
+                    : 'Gift Dispatched'
+                  : popup.type === 'buy-success'
+                  ? popup.isDryRun
+                    ? 'Safe Test Verified'
+                    : 'Cosmetic Added'
+                  : popup.errorMessage?.toLowerCase().includes('already own')
+                  ? 'Already Owned'
+                  : popup.errorMessage?.toLowerCase().includes('yourself')
+                  ? 'Cannot Gift To Self'
+                  : 'Action Failed'}
+              </span>
+
+              <h3 className="text-base font-bold text-foreground leading-snug">
+                {popup.title}
+              </h3>
+            </div>
+
+            {/* Details Box */}
+            <div className="bg-zinc-900/80 rounded-xl border border-zinc-800/80 p-3.5 text-xs space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-muted-foreground text-[11px]">Cosmetic:</span>
+                <span className="font-semibold text-foreground truncate max-w-[220px]">
+                  {popup.itemName}
+                </span>
+              </div>
+
+              {popup.recipientName && (
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-muted-foreground text-[11px]">Recipient:</span>
+                  <span className="font-semibold text-foreground truncate max-w-[220px]">
+                    {popup.recipientName}
+                  </span>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-muted-foreground text-[11px]">V-Bucks:</span>
+                <span
+                  className={cn(
+                    'font-semibold',
+                    popup.isDryRun
+                      ? 'text-blue-400'
+                      : popup.type.includes('success')
+                      ? 'text-blue-500'
+                      : 'text-zinc-400'
+                  )}
+                >
+                  {popup.isDryRun
+                    ? '0 VB (Safe Test Mode)'
+                    : popup.type.includes('success')
+                    ? `${popup.price.toLocaleString()} VB Deducted`
+                    : '0 VB (No charge)'}
+                </span>
+              </div>
+
+              {/* Error or Explanation details */}
+              {popup.errorMessage && (
+                <div className="mt-2.5 pt-2.5 border-t border-rose-500/20 bg-rose-500/5 -mx-3.5 -mb-3.5 p-3 rounded-b-xl space-y-1">
+                  <p className="text-xs text-rose-300 font-semibold leading-relaxed">
+                    {popup.errorMessage}
+                  </p>
+                  {popup.errorMessage.toLowerCase().includes('already own') && (
+                    <p className="text-[11px] text-zinc-400 leading-tight">
+                      No V-Bucks were deducted. Epic Games rejects gifting cosmetics that the player already has in their locker.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {popup.type.includes('success') && !popup.errorMessage && (
+                <p className="text-[11px] text-zinc-400 pt-1 text-center">
+                  {popup.isDryRun
+                    ? 'Safe Test Mode verified that this transaction is allowed by Epic Games without spending any V-Bucks.'
+                    : popup.type === 'gift-success'
+                    ? `Successfully sent directly to ${popup.recipientName || 'your friend'}.`
+                    : 'Successfully added to your Fortnite locker.'}
+                </p>
+              )}
+            </div>
+
+            {/* Bottom Continue Button */}
+            <Button
+              type="button"
+              onClick={() => setPopup(null)}
+              className="w-full h-9 font-semibold rounded-lg text-xs bg-zinc-100 text-zinc-950 hover:bg-white hover:text-black transition-colors"
+            >
+              Continue
+            </Button>
           </div>
         </div>
       )}
