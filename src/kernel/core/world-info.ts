@@ -27,7 +27,10 @@ import { defaultFortniteClient } from '../../config/fortnite/clients'
 import { MainWindow } from '../startup/windows/main'
 import { DataDirectory } from '../startup/data-directory'
 
-import { getWorldInfoData } from '../../services/endpoints/advanced-mode/world-info'
+import {
+  getWorldInfoData,
+  getWorldInfoDataFromStwNews,
+} from '../../services/endpoints/advanced-mode/world-info'
 import {
   createAccessTokenUsingClientCredentials,
   getAccessTokenUsingDeviceAuth,
@@ -345,6 +348,22 @@ export class WorldInfoManager {
   }
 
   private static async request() {
+    // 1. Primary: Fetch alerts information directly from https://stw.news/
+    try {
+      const stwNewsData = await getWorldInfoDataFromStwNews()
+      if (
+        stwNewsData &&
+        stwNewsData.missionAlerts?.length > 0 &&
+        stwNewsData.missions?.length > 0 &&
+        stwNewsData.theaters?.length > 0
+      ) {
+        return stwNewsData
+      }
+    } catch {
+      // Fallback if stw.news cannot be reached
+    }
+
+    // 2. Secondary fallback: Fetch via account device auth or client credentials
     try {
       let accessTokenStr = ''
 
