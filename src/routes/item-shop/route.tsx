@@ -85,12 +85,7 @@ export const Route = createRoute({
   component: ItemShopRouteComponent,
 })
 
-const GIFT_BOXES = [
-  { id: 'GiftBox:gb_default', name: 'Classic Gold & Red' },
-  { id: 'GiftBox:gb_makeitrain', name: 'Make It Rain Money Box' },
-  { id: 'GiftBox:gb_hearts', name: 'Hearts & Love Box' },
-  { id: 'GiftBox:gb_birthday', name: 'Birthday Confetti' },
-]
+
 
 function CategoryScrollPills({
   categories,
@@ -218,8 +213,6 @@ export function ItemShopRouteComponent() {
   const [selectedRecipientId, setSelectedRecipientId] = useState<string>('')
   const [searchRecipient, setSearchRecipient] = useState<string>('')
   const [friendPopoverOpen, setFriendPopoverOpen] = useState(false)
-  const [selectedGiftBox, setSelectedGiftBox] = useState<string>(GIFT_BOXES[0].id)
-  const [customMessage, setCustomMessage] = useState<string>('Enjoy your gift!')
   const [safeTestMode, setSafeTestMode] = useState<boolean>(true)
   const [sendingGift, setSendingGift] = useState(false)
 
@@ -457,8 +450,8 @@ export function ItemShopRouteComponent() {
       receiverDisplayName: selectedFriend.displayName,
       itemName: selectedItem.name,
       price: selectedItem.price,
-      giftWrapTemplateId: selectedGiftBox,
-      personalMessage: customMessage.trim() || 'Enjoy your gift!',
+      giftWrapTemplateId: '',
+      personalMessage: '',
       isDryRun: safeTestMode,
     }
 
@@ -833,36 +826,6 @@ export function ItemShopRouteComponent() {
                 )}
               </div>
 
-              {/* Gift Box Style */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold">Gift Wrap Box</label>
-                <div className="grid grid-cols-4 gap-2">
-                  {GIFT_BOXES.map((box) => (
-                    <Button
-                      key={box.id}
-                      type="button"
-                      variant={selectedGiftBox === box.id ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setSelectedGiftBox(box.id)}
-                      className="text-xs h-8 px-2 font-normal"
-                    >
-                      {box.name}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Personalized Message */}
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold">Personalized Gift Message</label>
-                <Input
-                  placeholder="e.g. Enjoy your skin! - From Trimzy"
-                  value={customMessage}
-                  maxLength={100}
-                  onChange={(e) => setCustomMessage(e.target.value)}
-                  className="h-8 text-xs"
-                />
-              </div>
             </div>
           )}
 
@@ -1030,14 +993,7 @@ export function ItemShopRouteComponent() {
           aria-modal="true"
           className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200"
         >
-          <div
-            className={cn(
-              'w-full max-w-[420px] bg-zinc-950/95 border rounded-2xl p-6 shadow-2xl space-y-4 animate-in zoom-in-95 duration-200 text-foreground relative',
-              popup.type.includes('success')
-                ? 'border-emerald-500/40 shadow-emerald-950/40'
-                : 'border-rose-500/40 shadow-rose-950/40'
-            )}
-          >
+          <div className="w-full max-w-[420px] bg-zinc-950/95 border border-zinc-800 rounded-2xl p-6 shadow-2xl space-y-4 animate-in zoom-in-95 duration-200 text-foreground relative">
             {/* Top-Right Dismiss X Button */}
             <button
               type="button"
@@ -1050,34 +1006,18 @@ export function ItemShopRouteComponent() {
 
             {/* Header: Center Icon & Title */}
             <div className="flex flex-col items-center text-center gap-2 pt-1">
-              <div
-                className={cn(
-                  'size-14 rounded-full flex items-center justify-center border shadow-sm',
-                  popup.type.includes('success')
-                    ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
-                    : 'bg-rose-500/15 border-rose-500/30 text-rose-400'
-                )}
-              >
+              <div className="size-14 rounded-full flex items-center justify-center border border-zinc-800 bg-zinc-900 text-zinc-100 shadow-sm">
                 {popup.type.includes('success') ? (
-                  <Check className="size-7" />
+                  <Check className="size-7 text-zinc-100" />
                 ) : popup.errorMessage?.toLowerCase().includes('already own') ||
                   popup.errorMessage?.toLowerCase().includes('yourself') ? (
-                  <AlertTriangle className="size-7" />
+                  <AlertTriangle className="size-7 text-zinc-100" />
                 ) : (
-                  <AlertCircle className="size-7" />
+                  <AlertCircle className="size-7 text-zinc-100" />
                 )}
               </div>
 
-              <span
-                className={cn(
-                  'text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded mt-1',
-                  popup.type.includes('success')
-                    ? popup.isDryRun
-                      ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
-                      : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                    : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
-                )}
-              >
+              <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded mt-1 bg-zinc-800/80 text-zinc-300 border border-zinc-700/60">
                 {popup.type === 'gift-success'
                   ? popup.isDryRun
                     ? 'Safe Test Verified'
@@ -1118,16 +1058,7 @@ export function ItemShopRouteComponent() {
 
               <div className="flex items-center justify-between gap-2">
                 <span className="text-muted-foreground text-[11px]">V-Bucks:</span>
-                <span
-                  className={cn(
-                    'font-semibold',
-                    popup.isDryRun
-                      ? 'text-blue-400'
-                      : popup.type.includes('success')
-                      ? 'text-blue-500'
-                      : 'text-zinc-400'
-                  )}
-                >
+                <span className="font-semibold text-zinc-200">
                   {popup.isDryRun
                     ? '0 VB (Safe Test Mode)'
                     : popup.type.includes('success')
@@ -1138,8 +1069,8 @@ export function ItemShopRouteComponent() {
 
               {/* Error or Explanation details */}
               {popup.errorMessage && (
-                <div className="mt-2.5 pt-2.5 border-t border-rose-500/20 bg-rose-500/5 -mx-3.5 -mb-3.5 p-3 rounded-b-xl space-y-1">
-                  <p className="text-xs text-rose-300 font-semibold leading-relaxed">
+                <div className="mt-2.5 pt-2.5 border-t border-zinc-800 bg-zinc-900/60 -mx-3.5 -mb-3.5 p-3 rounded-b-xl space-y-1">
+                  <p className="text-xs text-zinc-200 font-medium leading-relaxed">
                     {popup.errorMessage}
                   </p>
                   {popup.errorMessage.toLowerCase().includes('already own') && (

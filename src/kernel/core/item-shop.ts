@@ -297,8 +297,8 @@ export class ItemShopCore {
         accountId: payload.account.accountId,
         offerId: payload.offerId,
         receiverAccountIds: [payload.receiverAccountId],
-        giftWrapTemplateId: payload.giftWrapTemplateId || 'GiftBox:gb_default',
-        personalMessage: payload.personalMessage || 'Enjoy your gift!',
+        giftWrapTemplateId: '',
+        personalMessage: '',
         purchasePrice: payload.price,
       })
 

@@ -543,8 +543,8 @@ export function giftCatalogEntry({
   accountId,
   offerId,
   receiverAccountIds,
-  giftWrapTemplateId = 'GiftBox:gb_default',
-  personalMessage = 'Enjoy your gift!',
+  giftWrapTemplateId = '',
+  personalMessage = '',
   purchasePrice = 0,
 }: {
   accessToken: string
@@ -560,8 +560,8 @@ export function giftCatalogEntry({
     {
       offerId,
       receiverAccountIds,
-      giftWrapTemplateId,
-      personalMessage,
+      giftWrapTemplateId: giftWrapTemplateId || '',
+      personalMessage: personalMessage || '',
       purchasePrice,
       currency: 'MtxCurrency',
       currencySubType: '',
