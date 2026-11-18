@@ -373,6 +373,9 @@ export function ItemShopRouteComponent() {
                         alt={item.name}
                         className="object-contain w-full h-full p-2 group-hover:scale-105 transition-transform duration-200"
                         loading="lazy"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none'
+                        }}
                       />
                     ) : (
                       <Sparkles className="size-10 text-muted-foreground/30" />
@@ -450,7 +453,14 @@ export function ItemShopRouteComponent() {
               <div className="flex items-center gap-3 p-2.5 rounded-lg border bg-muted/40">
                 <div className="size-14 rounded bg-muted flex items-center justify-center overflow-hidden shrink-0 border">
                   {selectedItem.images.icon ? (
-                    <img src={selectedItem.images.icon} alt={selectedItem.name} className="size-full object-contain" />
+                    <img
+                      src={selectedItem.images.icon}
+                      alt={selectedItem.name}
+                      className="size-full object-contain"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none'
+                      }}
+                    />
                   ) : (
                     <Sparkles className="size-5 text-muted-foreground" />
                   )}

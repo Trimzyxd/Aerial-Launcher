@@ -59,13 +59,19 @@ export class ItemShopCore {
             entry.bundle.image ||
             entry.brItems?.[0]?.images?.featured ||
             entry.brItems?.[0]?.images?.icon ||
+            entry.brItems?.[0]?.images?.smallIcon ||
             ''
         } else if (entry.brItems && entry.brItems.length > 0) {
           const first = entry.brItems[0]
           name = first.name || ''
           rarity = first.rarity?.displayValue || first.rarity?.value || 'Rare'
           type = first.type?.displayValue || first.type?.value || 'Cosmetic'
-          imageUrl = renderImg || first.images?.featured || first.images?.icon || ''
+          imageUrl =
+            renderImg ||
+            first.images?.featured ||
+            first.images?.icon ||
+            first.images?.smallIcon ||
+            ''
         } else if (entry.tracks && entry.tracks.length > 0) {
           const track = entry.tracks[0]
           name = track.title ? `${track.title} - ${track.artist || ''}`.trim() : 'Jam Track'
@@ -77,9 +83,22 @@ export class ItemShopCore {
           name = car.name || 'Vehicle'
           category = 'Vehicles'
           type = 'Vehicle'
-          imageUrl = renderImg || car.images?.large || car.images?.icon || ''
+          imageUrl = renderImg || car.images?.large || car.images?.small || car.images?.icon || ''
+        } else if (entry.instruments && entry.instruments.length > 0) {
+          const inst = entry.instruments[0]
+          name = inst.name || 'Instrument'
+          category = 'Instruments'
+          type = 'Instrument'
+          imageUrl = renderImg || inst.images?.large || inst.images?.small || inst.images?.icon || ''
+        } else if (entry.legoKits && entry.legoKits.length > 0) {
+          const lego = entry.legoKits[0]
+          name = lego.name || 'LEGO Kit'
+          category = 'LEGO'
+          type = 'LEGO Kit'
+          imageUrl = renderImg || lego.images?.large || lego.images?.small || lego.images?.icon || ''
         } else {
           name = entry.devName?.replace(/^\[VIRTUAL\]\d+\s*x\s*/i, '').replace(/\s*for\s*-?\d+\s*MtxCurrency/i, '') || 'Item'
+          imageUrl = renderImg || ''
         }
 
         if (!name) continue
