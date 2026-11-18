@@ -316,6 +316,47 @@ export class ItemShopCore {
         } as SendGiftResult
       )
     } catch (error: any) {
+      const responseData = error?.response?.data
+      const rawError =
+        responseData?.errorMessage ||
+        responseData?.errorCode ||
+        responseData?.message ||
+        error?.message ||
+        'Gifting request failed'
+
+      const rawCombined = `${rawError} ${responseData?.errorCode || ''} ${responseData?.numericErrorCode || ''}`.toLowerCase()
+
+      let friendlyMessage = String(rawError)
+
+      if (
+        rawCombined.includes('already_owned') ||
+        rawCombined.includes('already own') ||
+        rawCombined.includes('owns') ||
+        rawCombined.includes('origination_item_already_owned')
+      ) {
+        friendlyMessage = `${payload.receiverDisplayName} already owns ${payload.itemName}.`
+      } else if (
+        rawCombined.includes('insufficient_funds') ||
+        rawCombined.includes('not enough') ||
+        rawCombined.includes('vbucks') ||
+        rawCombined.includes('currency')
+      ) {
+        friendlyMessage = `Insufficient V-Bucks balance to gift ${payload.itemName}.`
+      } else if (
+        rawCombined.includes('daily_limit') ||
+        rawCombined.includes('limit') ||
+        rawCombined.includes('max_gifts')
+      ) {
+        friendlyMessage = `Daily gifting limit reached (5/5 gifts sent today).`
+      } else if (
+        rawCombined.includes('not_eligible') ||
+        rawCombined.includes('eligible') ||
+        rawCombined.includes('friend') ||
+        rawCombined.includes('friendship')
+      ) {
+        friendlyMessage = `${payload.receiverDisplayName} is not eligible to receive gifts yet (must be Epic friends for at least 48 hours).`
+      }
+
       MainWindow.instance.webContents.send(
         ElectronAPIEventKeys.ItemShopSendGiftNotification,
         {
@@ -326,7 +367,7 @@ export class ItemShopCore {
           itemName: payload.itemName,
           price: payload.price,
           isDryRun: payload.isDryRun,
-          errorMessage: error?.response?.data?.errorMessage || error?.message || 'Gifting request failed',
+          errorMessage: friendlyMessage,
         } as SendGiftResult
       )
     }
@@ -389,6 +430,33 @@ export class ItemShopCore {
         } as BuyItemResult
       )
     } catch (error: any) {
+      const responseData = error?.response?.data
+      const rawError =
+        responseData?.errorMessage ||
+        responseData?.errorCode ||
+        responseData?.message ||
+        error?.message ||
+        'Item purchase failed'
+
+      const rawCombined = `${rawError} ${responseData?.errorCode || ''} ${responseData?.numericErrorCode || ''}`.toLowerCase()
+
+      let friendlyMessage = String(rawError)
+
+      if (
+        rawCombined.includes('already_owned') ||
+        rawCombined.includes('already own') ||
+        rawCombined.includes('owns')
+      ) {
+        friendlyMessage = `This account already owns ${payload.itemName}.`
+      } else if (
+        rawCombined.includes('insufficient_funds') ||
+        rawCombined.includes('not enough') ||
+        rawCombined.includes('vbucks') ||
+        rawCombined.includes('currency')
+      ) {
+        friendlyMessage = `Insufficient V-Bucks balance to purchase ${payload.itemName}.`
+      }
+
       MainWindow.instance.webContents.send(
         ElectronAPIEventKeys.ItemShopBuyItemNotification,
         {
@@ -397,10 +465,7 @@ export class ItemShopCore {
           itemName: payload.itemName,
           price: payload.price,
           isDryRun: payload.isDryRun,
-          errorMessage:
-            error?.response?.data?.errorMessage ||
-            error?.message ||
-            'Item purchase failed',
+          errorMessage: friendlyMessage,
         } as BuyItemResult
       )
     }

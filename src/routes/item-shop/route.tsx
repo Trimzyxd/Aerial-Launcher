@@ -1,6 +1,7 @@
 import { createRoute } from '@tanstack/react-router'
 import {
   AlertCircle,
+  AlertTriangle,
   Check,
   ChevronLeft,
   ChevronRight,
@@ -15,6 +16,7 @@ import {
   Sparkles,
   User,
   Users,
+  X,
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -226,6 +228,27 @@ export function ItemShopRouteComponent() {
   const [buyingItem, setBuyingItem] = useState(false)
   const [buySafeTestMode, setBuySafeTestMode] = useState<boolean>(true)
 
+  // Floating Notification Pop-up State (Prominent non-modal top-right banner)
+  const [popup, setPopup] = useState<{
+    id: number
+    type: 'gift-success' | 'gift-error' | 'buy-success' | 'buy-error'
+    title: string
+    itemName: string
+    recipientName?: string
+    price: number
+    isDryRun?: boolean
+    errorMessage?: string
+  } | null>(null)
+
+  // Auto-dismiss floating popup after 7 seconds
+  useEffect(() => {
+    if (!popup) return
+    const timer = setTimeout(() => {
+      setPopup(null)
+    }, 7000)
+    return () => clearTimeout(timer)
+  }, [popup?.id])
+
   const currentAccount = useMemo(
     () => accounts.find((acc) => acc.accountId === selectedAccountId) || accounts[0],
     [accounts, selectedAccountId]
@@ -281,37 +304,61 @@ export function ItemShopRouteComponent() {
 
     const subSendGift = window.electronAPI.notificationSendGift(async (res: SendGiftResult) => {
       setSendingGift(false)
+      // Immediately close the gifting menu so it never blocks the result pop-up
+      setIsModalOpen(false)
+
       if (res.success) {
-        if (res.isDryRun) {
-          toast.success(
-            `Safe Test Passed! (0 V-Bucks used) Eligible to gift ${res.itemName} to ${res.receiverDisplayName}.`,
-            { duration: 5000 }
-          )
-        } else {
-          toast.success(`Successfully gifted ${res.itemName} to ${res.receiverDisplayName}!`)
-        }
-        setIsModalOpen(false)
+        setPopup({
+          id: Date.now(),
+          type: 'gift-success',
+          title: res.isDryRun ? 'Safe Test Mode Passed' : 'Gift Sent Successfully!',
+          itemName: res.itemName,
+          recipientName: res.receiverDisplayName,
+          price: res.price,
+          isDryRun: res.isDryRun,
+        })
         if (currentAccount) fetchGiftingInfo(currentAccount)
       } else {
-        toast.error(`Gifting failed: ${res.errorMessage || 'Please check V-Bucks or daily limit'}`)
+        const isAlreadyOwned = res.errorMessage?.toLowerCase().includes('already own')
+        setPopup({
+          id: Date.now(),
+          type: 'gift-error',
+          title: isAlreadyOwned ? 'Recipient Already Owns This Item' : 'Gift Could Not Be Sent',
+          itemName: res.itemName,
+          recipientName: res.receiverDisplayName,
+          price: res.price,
+          isDryRun: res.isDryRun,
+          errorMessage: res.errorMessage || 'An error occurred while dispatching the gift.',
+        })
       }
     })
 
     const subBuyItem = window.electronAPI.notificationBuyItem(async (res: BuyItemResult) => {
       setBuyingItem(false)
+      // Immediately close the purchase menu so it never blocks the result pop-up
+      setIsBuyModalOpen(false)
+
       if (res.success) {
-        if (res.isDryRun) {
-          toast.success(
-            `Safe Test Passed! (0 V-Bucks used) Ready to purchase ${res.itemName} for ${res.price} VB.`,
-            { duration: 5000 }
-          )
-        } else {
-          toast.success(`Successfully purchased ${res.itemName} on this account!`)
-        }
-        setIsBuyModalOpen(false)
+        setPopup({
+          id: Date.now(),
+          type: 'buy-success',
+          title: res.isDryRun ? 'Safe Test Mode Passed' : 'Item Purchased Successfully!',
+          itemName: res.itemName,
+          price: res.price,
+          isDryRun: res.isDryRun,
+        })
         if (currentAccount) fetchGiftingInfo(currentAccount)
       } else {
-        toast.error(`Purchase failed: ${res.errorMessage || 'Please check V-Bucks balance'}`)
+        const isAlreadyOwned = res.errorMessage?.toLowerCase().includes('already own')
+        setPopup({
+          id: Date.now(),
+          type: 'buy-error',
+          title: isAlreadyOwned ? 'Item Already Owned' : 'Purchase Failed',
+          itemName: res.itemName,
+          price: res.price,
+          isDryRun: res.isDryRun,
+          errorMessage: res.errorMessage || 'An error occurred during purchase.',
+        })
       }
     })
 
@@ -976,6 +1023,144 @@ export function ItemShopRouteComponent() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* FLOATING NOTIFICATION POP-UP (NON-MODAL) */}
+      {popup && (
+        <div
+          role="alert"
+          aria-live="assertive"
+          className={cn(
+            'fixed top-5 right-5 z-[9999] w-[calc(100vw-2.5rem)] sm:w-[410px]',
+            'bg-zinc-950/95 backdrop-blur-md rounded-xl p-4 shadow-2xl border transition-all duration-300 animate-in fade-in slide-in-from-top-4',
+            popup.type.includes('success')
+              ? 'border-emerald-500/40 shadow-emerald-950/20'
+              : 'border-rose-500/40 shadow-rose-950/20'
+          )}
+        >
+          {/* Header Row */}
+          <div className="flex items-start gap-3">
+            <div
+              className={cn(
+                'size-9 shrink-0 rounded-lg flex items-center justify-center border',
+                popup.type.includes('success')
+                  ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
+                  : 'bg-rose-500/15 border-rose-500/30 text-rose-400'
+              )}
+            >
+              {popup.type.includes('success') ? (
+                <Check className="size-5" />
+              ) : popup.errorMessage?.toLowerCase().includes('already own') ? (
+                <AlertTriangle className="size-5" />
+              ) : (
+                <AlertCircle className="size-5" />
+              )}
+            </div>
+
+            <div className="flex-1 min-w-0 pr-1">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span
+                  className={cn(
+                    'text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded',
+                    popup.type.includes('success')
+                      ? popup.isDryRun
+                        ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                        : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                      : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                  )}
+                >
+                  {popup.type === 'gift-success'
+                    ? popup.isDryRun
+                      ? 'Safe Test Verified'
+                      : 'Gift Dispatched'
+                    : popup.type === 'buy-success'
+                    ? popup.isDryRun
+                      ? 'Safe Test Verified'
+                      : 'Cosmetic Added'
+                    : popup.errorMessage?.toLowerCase().includes('already own')
+                    ? 'Already Owned'
+                    : 'Action Failed'}
+                </span>
+              </div>
+              <h4 className="text-sm font-bold text-foreground mt-1 leading-snug">
+                {popup.title}
+              </h4>
+            </div>
+
+            {/* Manual Dismiss Button */}
+            <button
+              type="button"
+              onClick={() => setPopup(null)}
+              className="text-zinc-400 hover:text-foreground p-1 rounded-md hover:bg-white/10 transition-colors shrink-0"
+              aria-label="Dismiss notification"
+            >
+              <X className="size-4" />
+            </button>
+          </div>
+
+          {/* Details Card */}
+          <div className="mt-3 bg-zinc-900/80 rounded-lg border border-zinc-800/80 p-2.5 text-xs space-y-1.5">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-muted-foreground text-[11px]">Cosmetic:</span>
+              <span className="font-semibold text-foreground truncate max-w-[240px]">
+                {popup.itemName}
+              </span>
+            </div>
+
+            {popup.recipientName && (
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-muted-foreground text-[11px]">Recipient:</span>
+                <span className="font-semibold text-foreground truncate max-w-[240px]">
+                  {popup.recipientName}
+                </span>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-muted-foreground text-[11px]">V-Bucks:</span>
+              <span
+                className={cn(
+                  'font-semibold',
+                  popup.isDryRun
+                    ? 'text-blue-400'
+                    : popup.type.includes('success')
+                    ? 'text-blue-500'
+                    : 'text-zinc-400'
+                )}
+              >
+                {popup.isDryRun
+                  ? '0 VB (Safe Test Mode)'
+                  : popup.type.includes('success')
+                  ? `${popup.price.toLocaleString()} VB`
+                  : '0 VB (No charge)'}
+              </span>
+            </div>
+
+            {/* Error or Explanation details */}
+            {popup.errorMessage && (
+              <div className="mt-2 pt-2 border-t border-rose-500/20 bg-rose-500/5 -mx-2.5 -mb-2.5 p-2 rounded-b-lg space-y-0.5">
+                <p className="text-xs text-rose-300 font-medium">
+                  {popup.errorMessage}
+                </p>
+                {popup.errorMessage.toLowerCase().includes('already own') && (
+                  <p className="text-[10px] text-zinc-400 leading-tight">
+                    No V-Bucks were deducted. Epic Games rejects gifting cosmetics that the friend already has in their locker.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {popup.type.includes('success') && !popup.errorMessage && (
+              <p className="text-[11px] text-zinc-400 pt-1">
+                {popup.isDryRun
+                  ? 'Safe Test Mode verified that this transaction is allowed by Epic Games without spending any V-Bucks.'
+                  : popup.type === 'gift-success'
+                  ? `Successfully sent directly to ${popup.recipientName || 'your friend'}.`
+                  : 'Successfully added to your Fortnite locker.'}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
