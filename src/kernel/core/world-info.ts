@@ -28,7 +28,10 @@ import { MainWindow } from '../startup/windows/main'
 import { DataDirectory } from '../startup/data-directory'
 
 import { getWorldInfoData } from '../../services/endpoints/advanced-mode/world-info'
-import { createAccessTokenUsingClientCredentials } from '../../services/endpoints/oauth'
+import {
+  createAccessTokenUsingClientCredentials,
+  getAccessTokenUsingDeviceAuth,
+} from '../../services/endpoints/oauth'
 
 import { localeCompareForSorting } from '../../lib/utils'
 
@@ -343,16 +346,48 @@ export class WorldInfoManager {
 
   private static async request() {
     try {
-      const accessToken = await createAccessTokenUsingClientCredentials({
-        authorization: defaultFortniteClient.use.auth,
-      })
+      let accessTokenStr = ''
 
-      if (!accessToken.data.access_token) {
+      // Attempt to obtain token using device auth from any logged-in account
+      try {
+        const accountsResult = await DataDirectory.getAccountsFile()
+        if (accountsResult.status && accountsResult.accounts.length > 0) {
+          for (const account of accountsResult.accounts) {
+            if (account.accountId && account.deviceId && account.secret) {
+              try {
+                const tokenResponse = await getAccessTokenUsingDeviceAuth({
+                  accountId: account.accountId,
+                  deviceId: account.deviceId,
+                  secret: account.secret,
+                })
+                if (tokenResponse.data?.access_token) {
+                  accessTokenStr = tokenResponse.data.access_token
+                  break
+                }
+              } catch {
+                // Try next account
+              }
+            }
+          }
+        }
+      } catch {
+        // Fallback to client credentials
+      }
+
+      // Fallback to client credentials if no account token is available
+      if (!accessTokenStr) {
+        const accessToken = await createAccessTokenUsingClientCredentials({
+          authorization: defaultFortniteClient.use.auth,
+        })
+        accessTokenStr = accessToken.data?.access_token || ''
+      }
+
+      if (!accessTokenStr) {
         return defaultWorldInfo
       }
 
       const worldInfoResponse = await getWorldInfoData({
-        accessToken: accessToken.data.access_token,
+        accessToken: accessTokenStr,
       })
 
       if (

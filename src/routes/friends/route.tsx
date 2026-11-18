@@ -17,6 +17,7 @@ import { toast } from 'sonner'
 
 import { Route as RootRoute } from '../__root'
 
+import { AccountCombobox } from '../../components/selectors/account-combobox'
 import { HomeBreadcrumb } from '../../components/navigations/breadcrumb/home'
 import {
   Breadcrumb,
@@ -246,22 +247,17 @@ export function FriendsRouteComponent() {
       </Breadcrumb>
 
       {/* Header Bar */}
-      <div className="flex items-center justify-between pb-2 border-b">
+      <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b min-w-0">
         <h1 className="text-xl font-bold tracking-tight">Friends & Requests</h1>
 
         {/* Account Switcher & Refresh */}
-        <div className="flex items-center gap-2">
-          <select
-            value={currentAccount?.accountId || ''}
-            onChange={(e) => setSelectedAccountId(e.target.value)}
-            className="h-8 px-2.5 rounded-md border bg-background text-xs font-medium focus:outline-none"
-          >
-            {accounts.map((acc) => (
-              <option key={acc.accountId} value={acc.accountId}>
-                {acc.customDisplayName || acc.displayName}
-              </option>
-            ))}
-          </select>
+        <div className="flex flex-wrap items-center gap-2">
+          <AccountCombobox
+            accounts={accounts}
+            selectedAccountId={currentAccount?.accountId}
+            onSelectAccount={(accId) => setSelectedAccountId(accId)}
+            triggerClassName="w-48"
+          />
 
           <Button
             variant="outline"

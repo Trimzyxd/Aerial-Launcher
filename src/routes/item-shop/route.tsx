@@ -2,6 +2,7 @@ import { createRoute } from '@tanstack/react-router'
 import {
   AlertCircle,
   Check,
+  ChevronsUpDown,
   Gift,
   Heart,
   Loader2,
@@ -19,6 +20,7 @@ import { toast } from 'sonner'
 
 import { Route as RootRoute } from '../__root'
 
+import { AccountCombobox } from '../../components/selectors/account-combobox'
 import { HomeBreadcrumb } from '../../components/navigations/breadcrumb/home'
 import {
   Breadcrumb,
@@ -39,6 +41,19 @@ import {
 import { Input } from '../../components/ui/input'
 import { Badge } from '../../components/ui/badge'
 import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandListWithScrollArea,
+} from '../../components/ui/command'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '../../components/ui/popover'
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -48,6 +63,7 @@ import {
 } from '../../components/ui/dialog'
 
 import { useAccountListStore } from '../../state/accounts/list'
+import { cn } from '../../lib/utils'
 import type { AccountData } from '../../types/accounts'
 import type {
   AccountGiftingInfo,
@@ -90,6 +106,7 @@ export function ItemShopRouteComponent() {
   const [selectedItem, setSelectedItem] = useState<ShopItemEntry | null>(null)
   const [selectedRecipientId, setSelectedRecipientId] = useState<string>('')
   const [searchRecipient, setSearchRecipient] = useState<string>('')
+  const [friendPopoverOpen, setFriendPopoverOpen] = useState(false)
   const [selectedGiftBox, setSelectedGiftBox] = useState<string>(GIFT_BOXES[0].id)
   const [customMessage, setCustomMessage] = useState<string>('Enjoy your gift!')
   const [safeTestMode, setSafeTestMode] = useState<boolean>(true)
@@ -245,7 +262,7 @@ export function ItemShopRouteComponent() {
   }
 
   return (
-    <div className="flex flex-col gap-4 w-full">
+    <div className="flex flex-col gap-4 w-full min-w-0 overflow-x-hidden">
       {/* Breadcrumb */}
       <Breadcrumb>
         <BreadcrumbList>
@@ -258,27 +275,19 @@ export function ItemShopRouteComponent() {
       </Breadcrumb>
 
       {/* Header & Gifter Account Info Bar */}
-      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between pb-2 border-b">
+      <div className="flex flex-wrap items-center justify-between gap-2.5 pb-2 border-b min-w-0">
         <h1 className="text-xl font-bold tracking-tight">Fortnite Item Shop & Gifting</h1>
 
         {/* Selected Gifter Account Summary Pill */}
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-2 bg-muted/60 px-2.5 py-1 rounded-md border text-xs">
-            <User className="size-3.5 text-muted-foreground" />
-            <select
-              value={currentAccount?.accountId || ''}
-              onChange={(e) => setSelectedAccountId(e.target.value)}
-              className="bg-transparent font-medium focus:outline-none cursor-pointer"
-            >
-              {accounts.map((acc) => (
-                <option key={acc.accountId} value={acc.accountId} className="bg-popover text-popover-foreground">
-                  {acc.customDisplayName || acc.displayName}
-                </option>
-              ))}
-            </select>
+          <AccountCombobox
+            accounts={accounts}
+            selectedAccountId={currentAccount?.accountId}
+            onSelectAccount={(accId) => setSelectedAccountId(accId)}
+            triggerClassName="w-48"
+          />
 
-            <span className="text-muted-foreground">|</span>
-
+          <div className="flex items-center gap-2 bg-muted/60 px-2.5 py-1 rounded-md border text-xs h-8">
             {/* V-Bucks Balance */}
             <div className="flex items-center gap-1 font-bold text-blue-500">
               <span>{giftingInfo ? giftingInfo.vbucks.toLocaleString() : '...'}</span>
@@ -313,16 +322,16 @@ export function ItemShopRouteComponent() {
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 min-w-0 w-full">
         {/* Category Tabs */}
-        <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1">
+        <div className="flex items-center gap-1.5 overflow-x-auto max-w-full pb-1 shrink">
           {categories.slice(0, 6).map((cat) => (
             <Button
               key={cat}
               size="sm"
               variant={selectedCategory === cat ? 'default' : 'outline'}
               onClick={() => setSelectedCategory(cat)}
-              className="text-xs shrink-0"
+              className="text-xs shrink-0 h-8"
             >
               {cat}
             </Button>
@@ -330,13 +339,13 @@ export function ItemShopRouteComponent() {
         </div>
 
         {/* Search */}
-        <div className="relative w-full sm:w-72">
-          <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
+        <div className="relative w-full sm:w-64 shrink-0">
+          <Search className="absolute left-2.5 top-2.5 size-3.5 text-muted-foreground" />
           <Input
             placeholder="Search cosmetics..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-8 h-9 text-sm"
+            className="pl-8 h-8 text-xs"
           />
         </div>
       </div>
@@ -354,7 +363,7 @@ export function ItemShopRouteComponent() {
           <span className="text-xs">Try selecting a different category or clearing your search.</span>
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3.5">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 min-w-0">
           {filteredCatalog.map((item) => {
             const hasEnoughVBucks = giftingInfo ? giftingInfo.vbucks >= item.price : true
             const imageSrc = item.images.featured || item.images.icon
@@ -525,25 +534,76 @@ export function ItemShopRouteComponent() {
                   </span>
                 </label>
 
-                {/* Recipient search */}
-                <Input
-                  placeholder="Filter friends by name..."
-                  value={searchRecipient}
-                  onChange={(e) => setSearchRecipient(e.target.value)}
-                  className="h-8 text-xs"
-                />
-
-                <select
-                  value={selectedRecipientId}
-                  onChange={(e) => setSelectedRecipientId(e.target.value)}
-                  className="h-9 px-2.5 rounded-md border bg-background text-xs font-medium focus:outline-none"
-                >
-                  {filteredFriends.map((f) => (
-                    <option key={f.accountId} value={f.accountId}>
-                      {f.displayName} {f.isEligible48h ? '✓ (48h Ready)' : `(Needs ${f.hoursRemaining}h)`}
-                    </option>
-                  ))}
-                </select>
+                {/* Combobox for recipient friend */}
+                <Popover open={friendPopoverOpen} onOpenChange={setFriendPopoverOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={friendPopoverOpen}
+                      className="w-full justify-between h-9 text-xs font-normal border bg-background hover:bg-muted/50"
+                    >
+                      {selectedFriend ? (
+                        <div className="flex items-center gap-1.5 truncate">
+                          <span className="font-medium truncate">{selectedFriend.displayName}</span>
+                          <span className="text-[10px] text-muted-foreground">
+                            {selectedFriend.isEligible48h ? '(48h Ready)' : `(Needs ${selectedFriend.hoursRemaining}h)`}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">Choose a friend...</span>
+                      )}
+                      <ChevronsUpDown className="size-3.5 opacity-50 shrink-0 ml-2" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="p-0 w-[380px] max-w-[90vw]" align="start">
+                    <Command
+                      filter={(value, search) => {
+                        const f = giftingInfo?.eligibleFriends.find((item) => item.accountId === value)
+                        if (!f) return 0
+                        const q = search.toLowerCase().trim()
+                        return f.displayName.toLowerCase().includes(q) || f.accountId.toLowerCase().includes(q) ? 1 : 0
+                      }}
+                      loop
+                    >
+                      <CommandInput placeholder="Search friends list..." className="h-9 text-xs" />
+                      <CommandListWithScrollArea>
+                        <CommandEmpty className="py-2.5 text-center text-xs text-muted-foreground">
+                          No friends found
+                        </CommandEmpty>
+                        <CommandGroup>
+                          {giftingInfo?.eligibleFriends.map((f) => (
+                            <CommandItem
+                              key={f.accountId}
+                              value={f.accountId}
+                              onSelect={() => {
+                                setSelectedRecipientId(f.accountId)
+                                setFriendPopoverOpen(false)
+                              }}
+                              className="text-xs flex items-center justify-between py-1.5 px-2 cursor-pointer"
+                            >
+                              <div className="flex items-center gap-2 truncate">
+                                <Check
+                                  className={cn(
+                                    'size-3.5 shrink-0',
+                                    selectedRecipientId === f.accountId ? 'opacity-100' : 'opacity-0'
+                                  )}
+                                />
+                                <span className="truncate font-medium">{f.displayName}</span>
+                              </div>
+                              <Badge
+                                variant={f.isEligible48h ? 'default' : 'secondary'}
+                                className="text-[10px] px-1 py-0 ml-2 shrink-0 font-normal"
+                              >
+                                {f.isEligible48h ? '48h Ready' : `${f.hoursRemaining}h left`}
+                              </Badge>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandListWithScrollArea>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
 
                 {/* 48h Eligibility Indicator */}
                 {selectedFriend && (
@@ -566,19 +626,22 @@ export function ItemShopRouteComponent() {
               </div>
 
               {/* Gift Box Style */}
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-semibold">Gift Wrap Box</label>
-                <select
-                  value={selectedGiftBox}
-                  onChange={(e) => setSelectedGiftBox(e.target.value)}
-                  className="h-8 px-2.5 rounded-md border bg-background text-xs font-medium focus:outline-none"
-                >
+                <div className="grid grid-cols-4 gap-2">
                   {GIFT_BOXES.map((box) => (
-                    <option key={box.id} value={box.id}>
+                    <Button
+                      key={box.id}
+                      type="button"
+                      variant={selectedGiftBox === box.id ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setSelectedGiftBox(box.id)}
+                      className="text-xs h-8 px-2 font-normal"
+                    >
                       {box.name}
-                    </option>
+                    </Button>
                   ))}
-                </select>
+                </div>
               </div>
 
               {/* Personalized Message */}
