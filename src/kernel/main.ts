@@ -411,6 +411,24 @@ const gotTheLock = app.requestSingleInstanceLock()
     )
 
     ipcMain.on(
+      ElectronAPIEventKeys.DailyQuestsAutoRerollGetConfig,
+      async () => {
+        const config = await MCPDailyQuests.getAutoRerollConfig()
+        MainWindow.instance.webContents.send(
+          ElectronAPIEventKeys.DailyQuestsAutoRerollGetConfigNotification,
+          config,
+        )
+      },
+    )
+
+    ipcMain.on(
+      ElectronAPIEventKeys.DailyQuestsAutoRerollSaveConfig,
+      async (_, config: any) => {
+        await MCPDailyQuests.saveAutoRerollConfig(config)
+      },
+    )
+
+    ipcMain.on(
       ElectronAPIEventKeys.SetHombaseName,
       async (_, accounts: Array<AccountData>, homebaseName: string) => {
         await MCPHomebaseName.update(accounts, homebaseName)

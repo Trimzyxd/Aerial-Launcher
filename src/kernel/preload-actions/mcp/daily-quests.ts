@@ -80,6 +80,37 @@ export function runAutoRerollDailyQuests(
   )
 }
 
+export function getAutoRerollConfig() {
+  ipcRenderer.send(ElectronAPIEventKeys.DailyQuestsAutoRerollGetConfig)
+}
+
+export function saveAutoRerollConfig(config: AutoRerollConfig) {
+  ipcRenderer.send(ElectronAPIEventKeys.DailyQuestsAutoRerollSaveConfig, config)
+}
+
+export function notificationAutoRerollGetConfig(
+  callback: (config: AutoRerollConfig) => Promise<void> | void
+) {
+  const customCallback = (
+    _: IpcRendererEvent,
+    value: AutoRerollConfig
+  ) => {
+    Promise.resolve(callback(value)).catch(() => {})
+  }
+  const rendererInstance = ipcRenderer.on(
+    ElectronAPIEventKeys.DailyQuestsAutoRerollGetConfigNotification,
+    customCallback
+  )
+
+  return {
+    removeListener: () =>
+      rendererInstance.removeListener(
+        ElectronAPIEventKeys.DailyQuestsAutoRerollGetConfigNotification,
+        customCallback
+      ),
+  }
+}
+
 export function notificationAutoRerollDailyQuests(
   callback: (value: AutoRerollSummaryResult) => Promise<void>
 ) {

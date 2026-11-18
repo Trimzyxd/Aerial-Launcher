@@ -5,11 +5,12 @@ import {
   ChevronDown,
   ChevronUp,
   RefreshCw,
+  Save,
   Search,
   Sliders,
   Square,
 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import dailyQuestsTotal from '../../../data/dailiy-quests.json'
@@ -41,6 +42,7 @@ import { GoToTop } from '../../../components/go-to-top'
 
 import { parseResource } from '../../../lib/parsers/resources'
 import { parseCustomDisplayName } from '../../../lib/utils'
+import { toast } from '../../../lib/notifications'
 
 import type { AutoRerollConfig } from '../../../types/daily-quests'
 import { useDailyQuestsData } from './-hooks'
@@ -110,6 +112,75 @@ function Content() {
   const [keywordInput, setKeywordInput] = useState('explore, play with others')
   const [searchQuest, setSearchQuest] = useState('')
 
+  // Helper to persist auto-reroll settings to both localStorage and disk
+  const saveConfig = (
+    newBlacklist: string[],
+    newLowVBucks: boolean,
+    newKeywords: string,
+    showToast = false
+  ) => {
+    const config: AutoRerollConfig = {
+      enabled: true,
+      rerollLowVBucks: newLowVBucks,
+      blacklistedQuestIds: newBlacklist,
+      customKeywords: newKeywords
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean),
+    }
+
+    try {
+      localStorage.setItem('aerial_auto_reroll_config', JSON.stringify(config))
+    } catch {}
+
+    window.electronAPI.saveAutoRerollConfig(config)
+    if (showToast) {
+      toast('Auto-reroll rules saved!')
+    }
+  }
+
+  // Load saved configuration on mount
+  useEffect(() => {
+    try {
+      const cached = localStorage.getItem('aerial_auto_reroll_config')
+      if (cached) {
+        const parsed = JSON.parse(cached)
+        if (Array.isArray(parsed.blacklistedQuestIds)) {
+          setBlacklistedIds(parsed.blacklistedQuestIds)
+        }
+        if (typeof parsed.rerollLowVBucks === 'boolean') {
+          setRerollLowVBucks(parsed.rerollLowVBucks)
+        }
+        if (Array.isArray(parsed.customKeywords)) {
+          setKeywordInput(parsed.customKeywords.join(', '))
+        }
+      }
+    } catch {}
+
+    window.electronAPI.getAutoRerollConfig()
+
+    const sub = window.electronAPI.notificationAutoRerollGetConfig(async (cfg) => {
+      if (cfg) {
+        if (Array.isArray(cfg.blacklistedQuestIds)) {
+          setBlacklistedIds(cfg.blacklistedQuestIds)
+        }
+        if (typeof cfg.rerollLowVBucks === 'boolean') {
+          setRerollLowVBucks(cfg.rerollLowVBucks)
+        }
+        if (Array.isArray(cfg.customKeywords)) {
+          setKeywordInput(cfg.customKeywords.join(', '))
+        }
+        try {
+          localStorage.setItem('aerial_auto_reroll_config', JSON.stringify(cfg))
+        } catch {}
+      }
+    })
+
+    return () => {
+      sub.removeListener()
+    }
+  }, [])
+
   const allQuestsList = useMemo(() => {
     return Object.keys(dailyQuestsTotal)
   }, [])
@@ -125,21 +196,31 @@ function Content() {
   }, [allQuestsList, searchQuest, t])
 
   const toggleQuest = (id: string) => {
-    setBlacklistedIds((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
-    )
+    setBlacklistedIds((prev) => {
+      const next = prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+      saveConfig(next, rerollLowVBucks, keywordInput)
+      return next
+    })
   }
 
   const applyPresetTedious = () => {
-    setBlacklistedIds([
+    const nextIds = [
       'daily_explorezones',
       'daily_partyof50',
       'daily_mission_specialist_anyhero_2',
       'daily_huskextermination_anyhero',
       'daily_mission_specialist_anyhero_1',
-    ])
-    setKeywordInput('explore, play with others')
+    ]
+    const nextKeywords = 'explore, play with others'
+    setBlacklistedIds(nextIds)
+    setKeywordInput(nextKeywords)
     setRerollLowVBucks(true)
+    saveConfig(nextIds, true, nextKeywords, true)
+  }
+
+  const handleClearAll = () => {
+    setBlacklistedIds([])
+    saveConfig([], rerollLowVBucks, keywordInput, true)
   }
 
   return (
@@ -185,6 +266,7 @@ function Content() {
                   variant="secondary"
                   className="w-full sm:w-1/2 flex items-center justify-center gap-2"
                   onClick={() => {
+                    saveConfig(blacklistedIds, rerollLowVBucks, keywordInput)
                     const customConfig: AutoRerollConfig = {
                       enabled: true,
                       rerollLowVBucks,
@@ -241,7 +323,11 @@ function Content() {
                       <input
                         type="checkbox"
                         checked={rerollLowVBucks}
-                        onChange={(e) => setRerollLowVBucks(e.target.checked)}
+                        onChange={(e) => {
+                          const val = e.target.checked
+                          setRerollLowVBucks(val)
+                          saveConfig(blacklistedIds, val, keywordInput)
+                        }}
                         className="rounded"
                       />
                       <span>Always reroll low V-Bucks quests (50 VB quests)</span>
@@ -260,9 +346,17 @@ function Content() {
                         size="sm"
                         variant="outline"
                         className="h-7 text-xs text-muted-foreground"
-                        onClick={() => setBlacklistedIds([])}
+                        onClick={handleClearAll}
                       >
                         Clear All
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="h-7 text-xs font-semibold flex items-center gap-1.5 bg-primary"
+                        onClick={() => saveConfig(blacklistedIds, rerollLowVBucks, keywordInput, true)}
+                      >
+                        <Save className="size-3.5" />
+                        Save Rules
                       </Button>
                     </div>
                   </div>
@@ -276,6 +370,7 @@ function Content() {
                       placeholder="e.g. explore, play with others"
                       value={keywordInput}
                       onChange={(e) => setKeywordInput(e.target.value)}
+                      onBlur={() => saveConfig(blacklistedIds, rerollLowVBucks, keywordInput)}
                       className="h-8 text-xs"
                     />
                     <p className="text-[11px] text-muted-foreground">

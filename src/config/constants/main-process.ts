@@ -196,6 +196,9 @@ export enum ElectronAPIEventKeys {
    */
   DailyQuestsAutoRerollRun = 'daily-quests:auto-reroll:run',
   DailyQuestsAutoRerollNotification = 'daily-quests:auto-reroll:notification',
+  DailyQuestsAutoRerollGetConfig = 'daily-quests:auto-reroll:get-config',
+  DailyQuestsAutoRerollGetConfigNotification = 'daily-quests:auto-reroll:get-config:notification',
+  DailyQuestsAutoRerollSaveConfig = 'daily-quests:auto-reroll:save-config',
 
   /**
    * Advanced Mode

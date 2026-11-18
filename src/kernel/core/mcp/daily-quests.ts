@@ -146,6 +146,10 @@ export class MCPDailyQuests {
     accounts: Array<AccountData>,
     customConfig?: AutoRerollConfig,
   ) {
+    if (customConfig) {
+      await DataDirectory.updateAutoRerollSettings(customConfig)
+    }
+
     const config = customConfig || (await DataDirectory.getAutoRerollSettings())
     const results: AutoRerollItemResult[] = []
     let totalRerolled = 0
