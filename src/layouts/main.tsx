@@ -35,13 +35,13 @@ export function MainLayout({ children }: PropsWithChildren) {
           <SidebarMenu />
         </div>
       </div>
-      <div className="flex flex-col min-w-0">
+      <div className="flex flex-col min-w-0 w-full overflow-hidden">
         <Header />
         <ScrollArea
-          className="h-[calc(100vh-var(--header-height))]"
-          viewportClassName="main-wrapper-content"
+          className="h-[calc(100vh-var(--header-height))] w-full min-w-0"
+          viewportClassName="main-wrapper-content w-full min-w-0 max-w-full"
         >
-          <main className="flex flex-col gap-4 h-full min-h-[calc(100vh-var(--header-height))] p-4 relative lg:gap-6 lg:p-6">
+          <main className="flex flex-col gap-4 h-full min-h-[calc(100vh-var(--header-height))] p-4 relative lg:gap-6 lg:p-6 w-full min-w-0 max-w-full overflow-x-hidden">
             {children}
           </main>
         </ScrollArea>

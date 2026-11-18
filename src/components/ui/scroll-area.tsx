@@ -18,7 +18,10 @@ const ScrollArea = forwardRef<
     {...props}
   >
     <ScrollAreaPrimitive.Viewport
-      className={cn('h-full w-full rounded-[inherit]', viewportClassName)}
+      className={cn(
+        'h-full w-full rounded-[inherit] [&>div]:!block [&>div]:!w-full [&>div]:!min-w-0 [&>div]:!max-w-full',
+        viewportClassName
+      )}
     >
       {children}
     </ScrollAreaPrimitive.Viewport>

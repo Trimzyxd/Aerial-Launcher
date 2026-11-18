@@ -108,10 +108,10 @@ const gotTheLock = app.requestSingleInstanceLock()
     const mainWindow = new BrowserWindow({
       center: true,
       frame: false,
-      height: 680,
-      width: 1024,
-      minHeight: 600,
-      minWidth: 920,
+      height: 700,
+      width: 1040,
+      minHeight: 620,
+      minWidth: 980,
       webPreferences: {
         devTools: !app.isPackaged,
         preload: path.join(__dirname, 'preload.js'),

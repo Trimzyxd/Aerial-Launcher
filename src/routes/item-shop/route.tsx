@@ -326,19 +326,19 @@ export function ItemShopRouteComponent() {
       </Breadcrumb>
 
       {/* Header & Gifter Account Info Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-2.5 pb-2 border-b min-w-0">
-        <h1 className="text-xl font-bold tracking-tight">Fortnite Item Shop & Gifting</h1>
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b w-full min-w-0">
+        <h1 className="text-xl font-bold tracking-tight shrink-0">Fortnite Item Shop & Gifting</h1>
 
         {/* Selected Gifter Account Summary Pill */}
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 min-w-0">
           <AccountCombobox
             accounts={accounts}
             selectedAccountId={currentAccount?.accountId}
             onSelectAccount={(accId) => setSelectedAccountId(accId)}
-            triggerClassName="w-48"
+            triggerClassName="w-40 sm:w-44"
           />
 
-          <div className="flex items-center gap-2 bg-muted/60 px-2.5 py-1 rounded-md border text-xs h-8">
+          <div className="flex items-center gap-2 bg-muted/60 px-2.5 py-1 rounded-md border text-xs h-8 shrink-0">
             {/* V-Bucks Balance */}
             <div className="flex items-center gap-1 font-bold text-blue-500">
               <span>{giftingInfo ? giftingInfo.vbucks.toLocaleString() : '...'}</span>
@@ -364,7 +364,7 @@ export function ItemShopRouteComponent() {
               fetchGiftingInfo()
             }}
             disabled={loadingCatalog || loadingGiftingInfo}
-            className="h-8 px-2.5 text-xs flex items-center gap-1.5"
+            className="h-8 px-2.5 text-xs flex items-center gap-1.5 shrink-0"
           >
             <RefreshCw className={`size-3.5 ${loadingCatalog || loadingGiftingInfo ? 'animate-spin' : ''}`} />
             Refresh
@@ -373,16 +373,16 @@ export function ItemShopRouteComponent() {
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 min-w-0 w-full">
+      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2.5 min-w-0 w-full">
         {/* Category Tabs */}
-        <div className="flex items-center gap-1.5 overflow-x-auto max-w-full pb-1 shrink">
-          {categories.slice(0, 6).map((cat) => (
+        <div className="flex items-center gap-1.5 overflow-x-auto min-w-0 flex-1 pb-1 scrollbar-none">
+          {categories.slice(0, 8).map((cat) => (
             <Button
               key={cat}
               size="sm"
               variant={selectedCategory === cat ? 'default' : 'outline'}
               onClick={() => setSelectedCategory(cat)}
-              className="text-xs shrink-0 h-8"
+              className="text-xs shrink-0 h-8 whitespace-nowrap"
             >
               {cat}
             </Button>
@@ -390,13 +390,13 @@ export function ItemShopRouteComponent() {
         </div>
 
         {/* Search */}
-        <div className="relative w-full sm:w-64 shrink-0">
+        <div className="relative w-full md:w-56 shrink-0 min-w-0">
           <Search className="absolute left-2.5 top-2.5 size-3.5 text-muted-foreground" />
           <Input
             placeholder="Search cosmetics..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-8 h-8 text-xs"
+            className="pl-8 h-8 text-xs w-full"
           />
         </div>
       </div>
@@ -414,7 +414,7 @@ export function ItemShopRouteComponent() {
           <span className="text-xs">Try selecting a different category or clearing your search.</span>
         </div>
       ) : (
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-3 min-w-0 w-full">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 w-full min-w-0 max-w-full">
           {filteredCatalog.map((item) => {
             const hasEnoughVBucks = giftingInfo ? giftingInfo.vbucks >= item.price : true
             const imageSrc = item.images.featured || item.images.icon
