@@ -177,14 +177,15 @@ export class ItemShopCore {
 
       const now = Date.now()
       let giftsList: any[] = []
-      if (Array.isArray(stats.gift_history)) {
-        giftsList = stats.gift_history
-      } else if (Array.isArray(stats.gift_history?.gifts)) {
-        giftsList = stats.gift_history.gifts
-      } else if (Array.isArray(stats.gift_history?.sent)) {
-        giftsList = stats.gift_history.sent
-      } else if (stats.gift_history && typeof stats.gift_history === 'object') {
-        for (const val of Object.values(stats.gift_history)) {
+      const giftHistory = stats.gift_history as any
+      if (Array.isArray(giftHistory)) {
+        giftsList = giftHistory
+      } else if (Array.isArray(giftHistory?.gifts)) {
+        giftsList = giftHistory.gifts
+      } else if (Array.isArray(giftHistory?.sent)) {
+        giftsList = giftHistory.sent
+      } else if (giftHistory && typeof giftHistory === 'object') {
+        for (const val of Object.values(giftHistory)) {
           if (Array.isArray(val)) {
             giftsList = val
             break

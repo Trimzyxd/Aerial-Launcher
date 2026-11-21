@@ -13,8 +13,8 @@
 import { Route as rootRoute } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings/route'
 import { Route as ItemShopRouteImport } from './routes/item-shop/route'
-import { Route as FriendsRouteImport } from './routes/friends/route'
 import { Route as GamesLauncherRouteImport } from './routes/games-launcher/route'
+import { Route as FriendsRouteImport } from './routes/friends/route'
 import { Route as IndexImport } from './routes/index'
 import { Route as StwOperationsXpboostsRouteImport } from './routes/stw-operations/xpboosts/route'
 import { Route as StwOperationsUrnsRouteImport } from './routes/stw-operations/urns/route'
@@ -49,15 +49,13 @@ const ItemShopRouteRoute = ItemShopRouteImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
-const FriendsRouteRoute = FriendsRouteImport.update({
-  path: '/friends',
-  getParentRoute: () => rootRoute,
-} as any)
-
 const GamesLauncherRouteRoute = GamesLauncherRouteImport.update({
   path: '/games-launcher',
   getParentRoute: () => rootRoute,
 } as any)
+
+const FriendsRouteRoute = FriendsRouteImport.update({
+  path: '/friends',
   getParentRoute: () => rootRoute,
 } as any)
 

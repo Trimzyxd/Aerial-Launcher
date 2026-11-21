@@ -557,8 +557,6 @@ export function SidebarMenu({
             },
           )}
         >
-          )}
-        >
           {sidebarOrder.map((section) => (
             <Fragment key={section}>{sections[section]}</Fragment>
           ))}
