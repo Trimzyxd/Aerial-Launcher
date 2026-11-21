@@ -1,3 +1,4 @@
+import type { AccountData } from '../../types/accounts'
 import type {
   SaveWorldInfoData,
   WorldInfoDeleteResponse,
@@ -25,7 +26,9 @@ import { ElectronAPIEventKeys } from '../../config/constants/main-process'
 import { defaultFortniteClient } from '../../config/fortnite/clients'
 
 import { MainWindow } from '../startup/windows/main'
+import { AccountsManager } from '../startup/accounts'
 import { DataDirectory } from '../startup/data-directory'
+import { Authentication } from './authentication'
 
 import {
   getWorldInfoData,
@@ -347,6 +350,12 @@ export class WorldInfoManager {
     )
   }
 
+  /**
+   * Max accounts to try before giving up, so one account with a broken
+   * device auth doesn't leave the home tab empty
+   */
+  private static readonly maxAccountAttempts = 3
+
   private static async request() {
     // 1. Primary: Fetch alerts information directly from https://stw.news/
     try {
@@ -363,67 +372,106 @@ export class WorldInfoManager {
       // Fallback if stw.news cannot be reached
     }
 
-    // 2. Secondary fallback: Fetch via account device auth or client credentials
-    try {
-      let accessTokenStr = ''
+    // 2. Fetch via logged-in account (Epic endpoint)
+    const accounts = await WorldInfoManager.getAccountsForRequest()
 
-      // Attempt to obtain token using device auth from any logged-in account
+    for (const account of accounts.slice(
+      0,
+      WorldInfoManager.maxAccountAttempts,
+    )) {
       try {
-        const accountsResult = await DataDirectory.getAccountsFile()
-        if (accountsResult.status && accountsResult.accounts.length > 0) {
-          for (const account of accountsResult.accounts) {
-            if (account.accountId && account.deviceId && account.secret) {
-              try {
-                const tokenResponse = await getAccessTokenUsingDeviceAuth({
-                  accountId: account.accountId,
-                  deviceId: account.deviceId,
-                  secret: account.secret,
-                })
-                if (tokenResponse.data?.access_token) {
-                  accessTokenStr = tokenResponse.data.access_token
-                  break
-                }
-              } catch {
-                // Try next account
-              }
-            }
-          }
+        const accessToken = await Authentication.verifyAccessToken(account)
+
+        if (!accessToken) {
+          continue
         }
-      } catch {
-        // Fallback to client credentials
-      }
 
-      // Fallback to client credentials if no account token is available
-      if (!accessTokenStr) {
-        const accessToken = await createAccessTokenUsingClientCredentials({
-          authorization: defaultFortniteClient.use.auth,
-        })
-        accessTokenStr = accessToken.data?.access_token || ''
-      }
+        const data = await WorldInfoManager.fetchWorldInfo(accessToken)
 
-      if (!accessTokenStr) {
-        return defaultWorldInfo
+        if (data) {
+          return data
+        }
+      } catch (error) {
+        console.error(
+          `[WorldInfo] Request failed using account ${account.accountId}:`,
+          WorldInfoManager.describeError(error),
+        )
       }
+    }
 
-      const worldInfoResponse = await getWorldInfoData({
-        accessToken: accessTokenStr,
+    // 3. Fallback to client credentials in case Epic restores access
+    try {
+      const accessToken = await createAccessTokenUsingClientCredentials({
+        authorization: defaultFortniteClient.use.auth,
       })
 
-      if (
-        worldInfoResponse.data.missionAlerts?.length <= 0 ||
-        worldInfoResponse.data.missions?.length <= 0 ||
-        worldInfoResponse.data.theaters?.length <= 0
-      ) {
-        return defaultWorldInfo
+      if (accessToken.data.access_token) {
+        const data = await WorldInfoManager.fetchWorldInfo(
+          accessToken.data.access_token,
+        )
+
+        if (data) {
+          return data
+        }
       }
-
-      return worldInfoResponse.data
-
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
-      //
+      console.error(
+        '[WorldInfo] Request failed using client credentials:',
+        WorldInfoManager.describeError(error),
+      )
     }
 
     return defaultWorldInfo
+  }
+
+  private static async fetchWorldInfo(accessToken: string) {
+    const worldInfoResponse = await getWorldInfoData({
+      accessToken,
+    })
+
+    if (
+      !(worldInfoResponse.data.missionAlerts?.length > 0) ||
+      !(worldInfoResponse.data.missions?.length > 0) ||
+      !(worldInfoResponse.data.theaters?.length > 0)
+    ) {
+      return null
+    }
+
+    return worldInfoResponse.data
+  }
+
+  /**
+   * The renderer asks for world info on mount, which can happen before it
+   * asked the main process to load accounts, so read the file if needed
+   */
+  private static async getAccountsForRequest(): Promise<Array<AccountData>> {
+    const loaded = [...AccountsManager.getAccounts().values()]
+
+    if (loaded.length > 0) {
+      return loaded
+    }
+
+    try {
+      const { accounts } = await DataDirectory.getAccountsFile()
+
+      return accounts.map((account) => ({
+        ...account,
+        accessToken: undefined,
+      }))
+    } catch (error) {
+      console.error('[WorldInfo] Could not read accounts file:', error)
+    }
+
+    return []
+  }
+
+  private static describeError(error: unknown) {
+    const response = (
+      error as { response?: { status?: number; data?: unknown } }
+    )?.response
+
+    return response
+      ? `${response.status} ${JSON.stringify(response.data)}`
+      : error
   }
 }

@@ -36,6 +36,7 @@ export function CustomizableMenu() {
         <CurrentAlertsSection />
         <STWOperationsSection />
         <AccountManagementSection />
+        <GamesLauncherSection />
         <AdvancedModeSection />
         <MyAccountsSection />
       </CardContent>
@@ -44,7 +45,7 @@ export function CustomizableMenu() {
 }
 
 function CurrentAlertsSection() {
-  // const { t } = useTranslation(['sidebar'])
+  const { t } = useTranslation(['sidebar'])
 
   const { getMenuOptionVisibility } =
     useCustomizableMenuSettingsVisibility()
@@ -57,12 +58,38 @@ function CurrentAlertsSection() {
           className="title text-lg"
           htmlFor="current-alerts"
         >
-          Current Alerts
+          {t('current-alerts')}
         </Label>
         <Switch
           id="current-alerts"
           checked={getMenuOptionVisibility('currentAlerts')}
           onCheckedChange={updateMenuOption('currentAlerts')}
+        />
+      </div>
+    </div>
+  )
+}
+
+function GamesLauncherSection() {
+  const { t } = useTranslation(['sidebar'])
+
+  const { getMenuOptionVisibility } =
+    useCustomizableMenuSettingsVisibility()
+  const { updateMenuOption } = useCustomizableMenuSettingsActions()
+
+  return (
+    <div className="category">
+      <div className="item main">
+        <Label
+          className="title text-lg"
+          htmlFor="games-launcher"
+        >
+          {t('games-launcher.title')}
+        </Label>
+        <Switch
+          id="games-launcher"
+          checked={getMenuOptionVisibility('gamesLauncher')}
+          onCheckedChange={updateMenuOption('gamesLauncher')}
         />
       </div>
     </div>
@@ -110,7 +137,7 @@ function STWOperationsSection() {
             className="title"
             htmlFor="taxi-service"
           >
-            Taxi Service
+            {t('stw-operations.options.taxi-service')}
           </Label>
           <Switch
             id="taxi-service"

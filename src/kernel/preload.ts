@@ -13,6 +13,7 @@ import * as customizableMenuActions from './preload-actions/customizable-menu'
 import * as devicesAuthActions from './preload-actions/devices-auth'
 import * as eventActions from './preload-actions/events'
 import * as friendsActions from './preload-actions/friends'
+import * as gamesLauncherActions from './preload-actions/games-launcher'
 import * as generalActions from './preload-actions/general'
 import * as itemShopActions from './preload-actions/item-shop'
 import * as launcherActions from './preload-actions/launcher'
@@ -39,6 +40,7 @@ export const availableElectronAPIs = {
   ...devicesAuthActions,
   ...eventActions,
   ...friendsActions,
+  ...gamesLauncherActions,
   ...generalActions,
   ...itemShopActions,
   ...launcherActions,
